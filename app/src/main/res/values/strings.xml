@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">GTRadio</string>
+    <string name="action_settings">Settings</string>
+    <!-- Strings used for fragments for navigation -->
+    <string name="radio_list_label">Stations</string>
+    <string name="select">Select</string>
+    <string name="previous">Previous</string>
+
+    <string name="no_folder_selected">Please select a folder for your radio stations.</string>
+    <string name="preference_file_key">com.sc.gtradio.preferences</string>
+    <string name="radio_folders_uri_key">radio_folders_uri</string>
+</resources>

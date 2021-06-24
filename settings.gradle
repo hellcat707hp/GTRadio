@@ -1,0 +1,4 @@
+rootProject.name = "GTRadio"
+include ':app'
+include ':automotive'
+include ':common'

@@ -19,8 +19,10 @@
         <item name="windowNoTitle">true</item>
     </style>
 
-    <style name="Theme.GTRadio.AppBarOverlay" parent="ThemeOverlay.AppCompat.Light" />
+    <style name="Theme.GTRadio.AppBarOverlay" parent="ThemeOverlay.AppCompat.Light" >
+        <item name="android:colorBackground">#141414</item>
 
+    </style>
 
     <style name="Theme.GTRadio.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark" />
 

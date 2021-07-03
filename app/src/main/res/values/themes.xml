@@ -11,6 +11,8 @@
         <item name="colorOnSecondary">@color/white</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="titleTextColor">@android:color/black</item>
         <!-- Customize your theme here. -->
     </style>
 
@@ -22,4 +24,17 @@
     <style name="Theme.GTRadio.AppBarOverlay" parent="ThemeOverlay.AppCompat.ActionBar" />
 
     <style name="Theme.GTRadio.PopupOverlay" parent="ThemeOverlay.AppCompat.Light" />
+
+    <!-- All of this just to ensure the action bar on Settings has black-on-primary text -->
+    <style name="Theme.GTRadio.PreferencesTheme" parent="Theme.GTRadio">
+        <item name="android:textColorPrimary">@color/black</item>
+        <!-- Set the theme for the action bar -->
+        <item name="actionBarTheme">@style/Theme.GTRadio.PreferencesTheme.ActionBarTheme</item>
+    </style>
+
+    <style name="Theme.GTRadio.PreferencesTheme.ActionBarTheme" parent="@style/ThemeOverlay.AppCompat.ActionBar">
+        <!-- Set color of title of action bar -->
+        <item name="android:textColorPrimary">@color/black</item>
+    </style>
+
 </resources>

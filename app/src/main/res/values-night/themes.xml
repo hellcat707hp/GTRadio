@@ -2,8 +2,8 @@
     <!-- Base application theme. -->
     <style name="Theme.GTRadio" parent="Theme.MaterialComponents.DayNight.DarkActionBar">
         <!-- Primary brand color. -->
-        <item name="colorPrimary">@color/yellow_200</item>
-        <item name="colorPrimaryVariant">@color/yellow_600</item>
+        <item name="colorPrimary">@color/yellow_600</item>
+        <item name="colorPrimaryVariant">@color/yellow_200</item>
         <item name="colorOnPrimary">@color/black</item>
         <!-- Secondary brand color. -->
         <item name="colorSecondary">@color/red_300</item>
@@ -11,6 +11,8 @@
         <item name="colorOnSecondary">@color/black</item>
         <!-- Status bar color. -->
         <item name="android:statusBarColor" tools:targetApi="l">?attr/colorPrimaryVariant</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="titleTextColor">@android:color/black</item>
         <!-- Customize your theme here. -->
     </style>
 
@@ -20,10 +22,23 @@
     </style>
 
     <style name="Theme.GTRadio.AppBarOverlay" parent="ThemeOverlay.AppCompat.Light" >
+        <!-- Manually need to set the background color here for pages like SelectLibrary that arent pulling a background in light mode -->
         <item name="android:colorBackground">#141414</item>
-
     </style>
 
     <style name="Theme.GTRadio.PopupOverlay" parent="ThemeOverlay.AppCompat.Dark" />
+
+    <!-- All of this just to ensure the action bar on Settings has black-on-primary text -->
+    <style name="Theme.GTRadio.PreferencesTheme" parent="Theme.GTRadio">
+        <item name="android:textColorPrimary">@color/white</item>
+        <!-- Set the theme for the action bar -->
+        <item name="actionBarTheme">@style/Theme.GTRadio.PreferencesTheme.ActionBarTheme</item>
+    </style>
+
+    <style name="Theme.GTRadio.PreferencesTheme.ActionBarTheme" parent="@style/ThemeOverlay.AppCompat.Light">
+        <!-- Set color of title of action button and the bar -->
+        <item name="colorControlNormal">@color/white</item>
+        <item name="android:textColorPrimary">@color/white</item>
+    </style>
 
 </resources>

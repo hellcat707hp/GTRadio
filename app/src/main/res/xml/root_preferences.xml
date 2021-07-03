@@ -1,0 +1,26 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/library_header">
+
+        <Preference
+            android:clickable="true"
+            app:key="@string/radio_folders_uri_key"
+            app:title="@string/music_path_title"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/playback_header">
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="@string/ads_enabled_preference_key"
+            android:title="@string/ads_enabled_title" />
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="@string/weather_chatter_enabled_preference_key"
+            android:summary="@string/weather_chatter_summary"
+            android:title="@string/weather_chatter_enabled_title" />
+    </PreferenceCategory>
+
+</PreferenceScreen>

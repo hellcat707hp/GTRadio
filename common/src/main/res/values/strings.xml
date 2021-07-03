@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- UPDATE THESE IN THE COMMON RES FILE AS WELL-->
+    <string name="preference_file_key">com.sc.gtradio.preferences</string>
+    <string name="radio_folders_uri_key">radio_folders_uri</string>
+    <string name="ads_enabled_preference_key">ads_enabled</string>
+    <string name="weather_chatter_enabled_preference_key">weather_chatter_enabled</string>
+
+    <string name="notification_channel">Now Playing</string>
+    <string name="notification_channel_description">Shows what station is currently playing in GTRadio</string>
+    <string name="error_media_not_found">File not found</string>
+    <string name="generic_error">We\'ve encountered an error</string>
+</resources>

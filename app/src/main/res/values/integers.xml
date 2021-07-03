@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <integer name="select_library_request">1000</integer>
+    <integer name="read_storage_permission_request">1100</integer>
+
+</resources>

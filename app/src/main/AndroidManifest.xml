@@ -7,19 +7,23 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:requestLegacyExternalStorage="true"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.GTRadio">
+        <activity
+            android:name=".SelectLibraryActivity"
+            android:label="@string/title_activity_select_library"
+            android:theme="@style/Theme.GTRadio.NoActionBar">
+            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value=".SettingsActivity"/>
+        </activity>
+        <activity
+            android:name=".SettingsActivity"
+            android:label="@string/title_activity_settings" >
+            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value=".MainActivity"/>
 
+        </activity>
         <!-- Declare that we support Android Auto. -->
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
-
-        <!-- Declare that we support Cast. -->
-        <meta-data android:name="com.google.android.gms.cast.framework.OPTIONS_PROVIDER_CLASS_NAME"
-            android:value="com.example.android.uamp.cast.UampCastOptionsProvider"/>
-
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
@@ -31,20 +35,24 @@
             </intent-filter>
         </activity>
 
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
         <!--
         Declare the common MediaBrowserService for use in the mobile app, including
         with the Android Auto app.
         -->
         <service
-            android:name="com.sc.gtradio.media.GTRadioMusicService"
+            android:name=".media.GTRadioMusicService"
             android:enabled="true"
             android:exported="true"
             tools:ignore="ExportedService">
-
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
     </application>
+
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
 </manifest>

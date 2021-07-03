@@ -407,7 +407,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         val adsEnabled = sharedPref?.getBoolean(getString(R.string.ads_enabled_preference_key), false) ?: false
         val weatherChatterEnabled = sharedPref?.getBoolean(getString(R.string.weather_chatter_enabled_preference_key), false) ?: false
 
-        return RadioStation(mediaId!!,"$radioPath/$mediaId", "$radioPath/Adverts", radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
+        return RadioStation(mediaIdToBuild!!,"$radioPath/$mediaIdToBuild", "$radioPath/Adverts", radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
     }
 
     private fun getStationIndex(stationMediaId: String): Int {

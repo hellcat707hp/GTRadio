@@ -3,4 +3,8 @@
     <style name="TextAppearance.GTRadio.Title" parent="@style/TextAppearance.AppCompat.Title">
         <item name="android:textColor">?android:textColorSecondary</item>
     </style>
+
+    <style name="TextAppearance.GTRadio.Subtitle" parent="@style/TextAppearance.AppCompat.Subhead">
+        <item name="android:textColor">?android:textColorSecondary</item>
+    </style>
 </resources>

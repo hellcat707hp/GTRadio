@@ -26,5 +26,6 @@
     <string name="ads_enabled_title">Play Ads</string>
     <string name="weather_chatter_enabled_title">Play Weather-Specific DJ Chatter</string>
     <string name="weather_chatter_summary">Note: The weather-specific DJ chatter does not currently check active weather conditions.</string>
+    <string name="nothing_playing">Nothing Playing</string>
 
 </resources>

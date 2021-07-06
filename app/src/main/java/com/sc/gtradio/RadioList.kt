@@ -1,7 +1,6 @@
 package com.sc.gtradio
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
@@ -11,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.Fragment
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
@@ -74,19 +74,28 @@ class RadioList() : Fragment() {
             this.startActivity(myIntent)
         }
 
-        val sharedPref = this.activity?.getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
+        updateLibrarySelectedComponents()
+
+        binding.stationList.layoutManager = LinearLayoutManager(context)
+        binding.stationList.adapter = listAdapter
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateLibrarySelectedComponents()
+    }
+
+    private fun updateLibrarySelectedComponents() {
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(this.requireActivity().applicationContext)
         val radioUri = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
         if (radioUri.isNullOrEmpty()) {
             //User has no library selected, allow them to select something
             binding.buttonSelect.visibility = View.VISIBLE
             binding.textviewNofolder.visibility = View.VISIBLE
-       } else {
+        } else {
             binding.buttonSelect.visibility = View.INVISIBLE
             binding.textviewNofolder.visibility = View.INVISIBLE
-       }
-
-        binding.stationList.layoutManager = LinearLayoutManager(context)
-        binding.stationList.adapter = listAdapter
+        }
     }
 
     override fun onDestroyView() {

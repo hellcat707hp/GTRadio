@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentStatePagerAdapter
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
@@ -42,7 +43,7 @@ class SelectLibraryActivity : AppCompatActivity() {
     }
 
     private fun buildTabs() {
-        val sharedPref = this.getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val currentRadioPath = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
 
         //Use StorageManager to list out the disk volumes
@@ -58,7 +59,7 @@ class SelectLibraryActivity : AppCompatActivity() {
         for (volume in sm!!.storageVolumes) {
             val clickCallback = { clickedItem: FolderItem ->
                 //Handle the item click by updating the settings and navigating back
-                val sharedPref = this.getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
+                val sharedPref = PreferenceManager.getDefaultSharedPreferences(applicationContext)
                 with (sharedPref?.edit()) {
                     this?.putString(getString(R.string.radio_folders_uri_key), clickedItem.fullPath)
                     this?.apply()

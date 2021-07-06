@@ -6,6 +6,7 @@ import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
+import androidx.preference.PreferenceManager
 
 class SettingsActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -44,7 +45,7 @@ class SettingsActivity : AppCompatActivity() {
 
         private fun updateLibraryPathPreferenceValue() {
             val pathPref = findPreference<Preference>(resources.getString(R.string.radio_folders_uri_key))!!
-            val sharedPref = this.activity?.getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
+            val sharedPref = PreferenceManager.getDefaultSharedPreferences(requireActivity().applicationContext)
             val radioUri = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
             pathPref.summary = radioUri
         }

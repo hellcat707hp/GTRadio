@@ -2,11 +2,11 @@ package com.sc.gtradio.media
 
 import android.app.Notification
 import android.app.PendingIntent
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.BitmapFactory
 import android.os.Bundle
+import androidx.preference.PreferenceManager
 import android.support.v4.media.MediaBrowserCompat.MediaItem
 import android.support.v4.media.MediaMetadataCompat
 import androidx.media.MediaBrowserServiceCompat
@@ -24,6 +24,7 @@ import java.util.ArrayList
 
 open class GTRadioMusicService : MediaBrowserServiceCompat() {
     private var stationsList: ArrayList<MediaItem> = ArrayList()
+    private val stationCache: MutableMap<String, RadioStation> = mutableMapOf()
     private val sharedPrefListener = GTRadioOnSharedPrefChange()
 
     //Setup a listener for settings changes
@@ -87,7 +88,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         override fun onPlay() {
             if (activeStation == null) {
                 //Build the station to play
-                val stationToPlay = buildRadioStation()
+                val stationToPlay = getRadioStation()
                 if (stationToPlay == null) {
                     //Must be no stations available
                     return
@@ -125,7 +126,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 return
             }
 
-            activeStation = buildRadioStation(mediaId)
+            activeStation = getRadioStation(mediaId)
             if (activeStation == null) {
                 //Unable to find the station to play
                 return
@@ -199,7 +200,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         override fun onSkipToNext() {
             if (activeStation == null) {
                 //No active station, so find the first one to play
-                val stationToPlay = buildRadioStation()
+                val stationToPlay = getRadioStation()
                 if (stationToPlay == null) {
                     //Must be no stations available
                     return
@@ -214,7 +215,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                     //Loop back to start
                     nextStationIndex = 0
                 }
-                activeStation = buildRadioStation(stationsList[nextStationIndex].mediaId)
+                activeStation = getRadioStation(stationsList[nextStationIndex].mediaId)
             }
 
             //Get and set the playback actions available when on this station
@@ -244,7 +245,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         override fun onSkipToPrevious() {
             if (activeStation == null) {
                 //No active station, so find the first one to play
-                val stationToPlay = buildRadioStation()
+                val stationToPlay = getRadioStation()
                 if (stationToPlay == null) {
                     //Must be no stations available
                     return
@@ -259,7 +260,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                     //Loop back to end
                     prevStationIndex = stationsList.lastIndex
                 }
-                activeStation = buildRadioStation(stationsList[prevStationIndex].mediaId)
+                activeStation = getRadioStation(stationsList[prevStationIndex].mediaId)
             }
 
             //Get and set the playback actions available when on this station
@@ -292,7 +293,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         super.onCreate()
 
         //Subscribe to any SharedPref changes for things like the base folder, ads, and weather chatter
-        val sharedPref = getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         sharedPref.registerOnSharedPreferenceChangeListener(sharedPrefListener)
 
         // Build a PendingIntent that can be used to launch the UI.
@@ -331,7 +332,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
     }
 
     private fun getStationsList(): ArrayList<MediaItem> {
-        val sharedPref = getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val radioPath = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "") ?: return ArrayList()
 
         val list = ArrayList<MediaItem>()
@@ -387,27 +388,45 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         result.sendResult(stationsList)
     }
 
-    private fun buildRadioStation(mediaId: String? = null): RadioStation? {
-        var mediaIdToBuild = mediaId
-        if (mediaIdToBuild.isNullOrBlank()) {
+    private fun getRadioStation(mediaId: String? = null): RadioStation? {
+        //Get the mediaId of the first station if none is provided
+        var mediaIdToGet = mediaId
+        if (mediaIdToGet.isNullOrBlank()) {
             if (stationsList.isEmpty()) {
                 return null
             } else {
-                mediaIdToBuild = stationsList.first().mediaId
+                mediaIdToGet = stationsList.first().mediaId
             }
         }
 
-        if (!stationsList.any { x -> x.mediaId == mediaIdToBuild }) {
+        if (!stationsList.any { x -> x.mediaId == mediaIdToGet }) {
             //Someone is asking us to play something that doesn't exist
             return null
         }
 
-        val sharedPref = getSharedPreferences(getString(R.string.preference_file_key), Context.MODE_PRIVATE)
+        if (mediaIdToGet.isNullOrBlank()) {
+            //Really lost here, nothing has been found for this id
+            return null
+        }
+
+        //Let's do a lookup and see if this is cached already
+        if (stationCache.containsKey(mediaIdToGet)) {
+            return stationCache[mediaIdToGet]
+        }
+
+        //Didn't have the station cached yet, so lets build it and cache it
+        val station = buildRadioStation(mediaIdToGet)
+        stationCache[station.mediaId] = station
+        return station
+    }
+
+    private fun buildRadioStation(mediaId: String): RadioStation {
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val radioPath = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
         val adsEnabled = sharedPref?.getBoolean(getString(R.string.ads_enabled_preference_key), false) ?: false
         val weatherChatterEnabled = sharedPref?.getBoolean(getString(R.string.weather_chatter_enabled_preference_key), false) ?: false
 
-        return RadioStation(mediaIdToBuild!!,"$radioPath/$mediaIdToBuild", "$radioPath/Adverts", radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
+        return RadioStation(mediaId,"$radioPath/$mediaId", "$radioPath/Adverts", radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
     }
 
     private fun getStationIndex(stationMediaId: String): Int {

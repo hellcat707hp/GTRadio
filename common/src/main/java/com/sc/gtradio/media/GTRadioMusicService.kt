@@ -20,6 +20,7 @@ import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 import java.io.File
 import java.io.FileFilter
+import java.io.FilenameFilter
 import java.util.ArrayList
 
 open class GTRadioMusicService : MediaBrowserServiceCompat() {
@@ -338,7 +339,9 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         val list = ArrayList<MediaItem>()
         val dir = File(radioPath)
 
-        val subDirs = dir.list() ?: return ArrayList()
+        val subDirs = dir.list(FilenameFilter { file, _ ->
+            return@FilenameFilter file.isDirectory
+        }) ?: return ArrayList()
         for (subDir in subDirs) {
             //Skip the Adverts folder since its not a standalone station
             if (subDir.endsWith("Adverts")) { continue }

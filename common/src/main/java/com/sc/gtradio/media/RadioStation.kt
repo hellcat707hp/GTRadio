@@ -3,11 +3,13 @@ package com.sc.gtradio.media
 import android.content.Context
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.net.toUri
+import com.google.android.exoplayer2.ExoPlaybackException
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.*
 import java.io.File
 import java.io.FilenameFilter
@@ -56,6 +58,9 @@ class RadioStation(
     private var lastSegment = RadioSegmentType.None
     private var songsSinceLastBreak = 0
     private var activeListener: Player.Listener? = null
+    private val rng = Random()
+
+    private var playFailureCount = 0
 
     init {
         stationName = getStationName(baseStationPath)
@@ -120,7 +125,6 @@ class RadioStation(
     private fun setupSongFolders(folder: String) {
         if (folder.isNotBlank()) {
             songFolders = (File(folder).list(FilenameFilter { file: File, _: String ->
-                Boolean
                 return@FilenameFilter file.isDirectory
             }) ?: emptyArray()).map {
                 return@map "$folder/$it"
@@ -151,23 +155,25 @@ class RadioStation(
         djNightFiles.shuffle()
         djOtherFiles.shuffle()
 
+        //Include the relevant time-of-day DJ chatter based on current time
+        //Note: There is no afternoon slot currently based on the anticipated user dataset
         val now = Calendar.getInstance()
         val currentHour = now.get(Calendar.HOUR_OF_DAY)
         var arrToConcat: Array<String> = emptyArray()
-        if (currentHour in 3..16) {
-            //Morning (3am-5pm)
+        if (currentHour in 3..12) {
+            //Morning (3am-noon) (03:00 to 12:00)
             arrToConcat = djMorningFiles
-        } else if(currentHour in 15..22) {
-            //Evening (5pm-11pm)
+        } else if(currentHour in 17..22) {
+            //Evening (5pm-11pm) (17:00-23:00)
             arrToConcat = djEveningFiles
         } else if(currentHour < 3 || currentHour >= 23) {
-            //Night (11pm-3am)
+            //Night (11pm-3am) (23:00-03:00)
             arrToConcat = djNightFiles
         }
         currentDJFiles = djOtherFiles.plus(arrToConcat)
 
         if (weatherChatterEnabled) {
-            //Include the DJ Weather Chatter
+            //Include the DJ weather chatter
             djWeatherFogFiles.shuffle()
             djWeatherRainFiles.shuffle()
             djWeatherStormFiles.shuffle()
@@ -225,10 +231,10 @@ class RadioStation(
 
     private fun playNext() {
         if (activeListener != null) {
+            //Remove/clear any active exoplayer listeners to prevent incidental or repeated callbacks
             player.removeListener(activeListener!!)
         }
 
-        val rng = Random()
         if (_playing) {
             when (lastSegment) {
                 RadioSegmentType.None -> {
@@ -356,7 +362,6 @@ class RadioStation(
         val mainOutro = songFolder + "/" + songFiles.find { x -> return@find x.contains("(Outro)") }
         val djOutros = songFiles.filter { x -> return@filter x.contains("(Outro DJ") }.map { x -> return@map "$songFolder/$x" }
 
-        val rng = Random()
         val introToUse: String
         if (requireDjIntro && djIntros.isNotEmpty()) {
             //Use a random dj intro
@@ -390,13 +395,13 @@ class RadioStation(
         }
 
         val introFile = File(introToUse)
-        val introSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, "Exoplayer-local")).createMediaSource(MediaItem.fromUri(introFile.toUri()))
+        val introSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(introFile.toUri()))
 
         val mainFile = File(mainSongPath)
-        val mainSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, "Exoplayer-local")).createMediaSource(MediaItem.fromUri(mainFile.toUri()))
+        val mainSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(mainFile.toUri()))
 
         val outroFile = File(outroToUse)
-        val outroSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, "Exoplayer-local")).createMediaSource(MediaItem.fromUri(outroFile.toUri()))
+        val outroSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(outroFile.toUri()))
 
         // Prepare the player.
         val concatSource = ConcatenatingMediaSource(true)
@@ -422,7 +427,7 @@ class RadioStation(
     {
         // Set the media item to be played.
         val fileToPlay = File(file)
-        val src = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, "Exoplayer-local")).createMediaSource(MediaItem.fromUri(fileToPlay.toUri()))
+        val src = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(fileToPlay.toUri()))
         // Prepare the player.
         player.setMediaSource(src)
 
@@ -436,6 +441,7 @@ class RadioStation(
                 }
             }
         }
+
         player.addListener(activeListener!!)
         player.prepare()
         player.play()

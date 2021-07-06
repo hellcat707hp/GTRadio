@@ -24,6 +24,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.sc.gtradio.databinding.ActivitySelectLibraryBinding
 import com.sc.gtradio.databinding.FragmentFolderitemBinding
 import java.io.File
+import java.io.FilenameFilter
 import java.lang.reflect.Field
 
 
@@ -68,7 +69,9 @@ class SelectLibraryActivity : AppCompatActivity() {
                 finish()
             }
             val volFile = f.get(volume) as File
-            val folders = (volFile.list() ?: emptyArray()).map {
+            val folders = (volFile.list(FilenameFilter { file, _ ->
+                return@FilenameFilter file.isDirectory
+            }) ?: emptyArray()).map {
                 return@map FolderItem(volFile.absolutePath+"/"+it, it, volFile.absolutePath+"/"+it == currentRadioPath)
             }
             tabLists.add(TabList(volume.getDescription(applicationContext), folders, clickCallback, tabLists.size+1))

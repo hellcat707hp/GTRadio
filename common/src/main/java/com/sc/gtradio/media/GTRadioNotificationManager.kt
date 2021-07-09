@@ -3,14 +3,18 @@ package com.sc.gtradio.media
 import android.app.PendingIntent
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.ImageDecoder
+import android.os.Build
+import android.provider.MediaStore
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
 import com.google.android.exoplayer2.DefaultControlDispatcher
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
 
+
 const val NOW_PLAYING_CHANNEL_ID = "com.sc.gtradio.media.NOW_PLAYING"
-const val NOW_PLAYING_NOTIFICATION_ID = 0xb389 // Arbitrary number used to identify our notification
+const val NOW_PLAYING_NOTIFICATION_ID = 0xb369 // Arbitrary number used to identify our notification
 
 class GTRadioNotificationManager(
     private val context: Context,
@@ -33,11 +37,8 @@ class GTRadioNotificationManager(
         ).apply {
 
             setMediaSessionToken(sessionToken)
-            setSmallIcon(R.drawable.ic_notification)
 
             // Don't display the rewind or fast-forward buttons, or the media time
-            setRewindIncrementMs(0)
-            setFastForwardIncrementMs(0)
             setUseChronometer(false)
             setControlDispatcher(CustomControlDispatcher(sessionToken))
         }
@@ -48,6 +49,12 @@ class GTRadioNotificationManager(
     }
 
     fun showNotificationForPlayer(player: Player){
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Something is really broken about the notifications in Android 11
+            // Reference below possibly? But I've already tried fixing/adjusting the icons to use and its not helping
+            //  https://stackoverflow.com/questions/47368187/android-oreo-notification-crashes-system-ui
+            return
+        }
         notificationManager.setPlayer(player)
         updatePlayerButtons(player)
     }
@@ -70,8 +77,13 @@ class GTRadioNotificationManager(
 
     private inner class DescriptionAdapter(private val controller: MediaControllerCompat) :
         PlayerNotificationManager.MediaDescriptionAdapter {
-            override fun createCurrentContentIntent(player: Player): PendingIntent? =
-                controller.sessionActivity
+            override fun getCurrentContentTitle(player: Player): CharSequence {
+                return controller.metadata.description.title.toString()
+            }
+
+            override fun createCurrentContentIntent(player: Player): PendingIntent? {
+                return controller.sessionActivity
+            }
 
             override fun getCurrentContentText(player: Player): CharSequence {
                 return if (controller.metadata.description.subtitle == null) {
@@ -82,11 +94,12 @@ class GTRadioNotificationManager(
             }
 
             override fun getCurrentLargeIcon(player: Player, callback: PlayerNotificationManager.BitmapCallback): Bitmap? {
-                return controller.metadata.description.iconBitmap
+                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, controller.metadata.description.iconUri!!))
+                } else {
+                    MediaStore.Images.Media.getBitmap(context.contentResolver, controller.metadata.description.iconUri!!)
+                }
             }
-
-            override fun getCurrentContentTitle(player: Player) =
-                controller.metadata.description.title.toString()
 
             override fun getCurrentSubText(player: Player): CharSequence {
                 return if (controller.metadata.description.subtitle == null) {

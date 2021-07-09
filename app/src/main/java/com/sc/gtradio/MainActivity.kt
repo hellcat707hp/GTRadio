@@ -1,19 +1,24 @@
 package com.sc.gtradio
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioManager
+import android.net.Uri
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
+import androidx.activity.result.ActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import android.view.Menu
-import android.view.MenuItem
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
 import com.sc.gtradio.databinding.ActivityMainBinding
 
 class MainActivity : AppCompatActivity() {
@@ -72,5 +77,12 @@ class MainActivity : AppCompatActivity() {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)
                 || super.onSupportNavigateUp()
+    }
+
+    fun navigateToRadioList(stationGroupId: String?) {
+        val navController = findNavController(R.id.nav_host_fragment_content_main)
+        if (stationGroupId?.isNotBlank() == true) {
+            navController.navigate(R.id.SecondFragment, Bundle().apply { this.putString("stationGroupId", stationGroupId) })
+        }
     }
 }

@@ -4,8 +4,9 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.SharedPreferences
-import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Bundle
+import android.os.ResultReceiver
 import androidx.preference.PreferenceManager
 import android.support.v4.media.MediaBrowserCompat.MediaItem
 import android.support.v4.media.MediaMetadataCompat
@@ -15,16 +16,19 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.documentfile.provider.DocumentFile
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
-import java.io.File
-import java.io.FileFilter
-import java.io.FilenameFilter
+import com.sc.gtradio.media.stations.Gen1RadioStation
+import com.sc.gtradio.media.stations.Gen2RadioStation
+import com.sc.gtradio.media.stations.RadioStation
+import com.sc.gtradio.media.stations.StationGroup
 import java.util.ArrayList
 
 open class GTRadioMusicService : MediaBrowserServiceCompat() {
-    private var stationsList: ArrayList<MediaItem> = ArrayList()
+    private var stationGroups: ArrayList<StationGroup> = ArrayList()
+    private var fullStationList: ArrayList<MediaItem> = ArrayList()
     private val stationCache: MutableMap<String, RadioStation> = mutableMapOf()
     private val sharedPrefListener = GTRadioOnSharedPrefChange()
 
@@ -35,7 +39,8 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 when(key) {
                     resources.getString(R.string.radio_folders_uri_key) -> {
                         //Update stations list
-                        this@GTRadioMusicService.stationsList = this@GTRadioMusicService.getStationsList()
+                        this@GTRadioMusicService.stationGroups = this@GTRadioMusicService.getStationGroups()
+                        this@GTRadioMusicService.fullStationList = this@GTRadioMusicService.getFullStationList()
                     }
                     resources.getString(R.string.ads_enabled_preference_key)  -> {
                         //Update ads enabled
@@ -84,25 +89,32 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
     }
 
     private var activeStation: RadioStation? = null
+    private var activeStationGroupId: String? = null
 
     private val callback = object : MediaSessionCompat.Callback() {
+        override fun onCommand(command: String?, extras: Bundle?, cb: ResultReceiver?) {
+            super.onCommand(command, extras, cb)
+            if (command == "setActiveStationGroupId") {
+                activeStationGroupId = extras?.getString("stationGroupId")
+            }
+        }
+
         override fun onPlay() {
-            if (activeStation == null) {
-                //Build the station to play
-                val stationToPlay = getRadioStation()
-                if (stationToPlay == null) {
-                    //Must be no stations available
-                    return
-                } else {
-                    activeStation = stationToPlay
-                }
+            if (activeStation == null && activeStationGroupId == null) {
+                return
+            } else if (activeStation == null && activeStationGroupId != null) {
+                //Pick up the first station in the group
+                val group = getStationGroup(activeStationGroupId!!) ?: return
+                val firstStation = group.stationList.firstOrNull() ?: return
+                activeStation = getRadioStation(group, firstStation.mediaId!!)
             }
 
             //Get and set the playback actions available when on this station
-            val stationIndex = getStationIndex(activeStation!!.mediaId)
-            radioPlayer.nextEnabled = stationIndex < stationsList.lastIndex
+            val group = getStationGroup(activeStation!!.stationGroupId) ?: return
+            val stationIndex = group.getStationIndex(activeStation!!.mediaId)
+            radioPlayer.nextEnabled = stationIndex < group.stationList.lastIndex
             radioPlayer.previousEnabled = stationIndex != 0
-            val playbackActions = getPlaybackActionsForStation(stationIndex)
+            val playbackActions = group.getPlaybackActionsForStation(stationIndex)
 
             activeStation?.play()
             val playbackState = PlaybackStateCompat.Builder()
@@ -110,14 +122,15 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .setActions(playbackActions)
                 .build()
             session.setPlaybackState(playbackState)
-            val media = stationsList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
+            val media = fullStationList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
             val metadata =  MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, media.mediaId)
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.description.title as String?)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, media.description.iconBitmap)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, media.description.iconUri.toString())
                 .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, media.description.description as String?)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, media.description.iconBitmap)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, media.description.iconUri.toString())
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
                 .build()
             session.setMetadata(metadata)
         }
@@ -127,17 +140,20 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 return
             }
 
-            activeStation = getRadioStation(mediaId)
+            val group = getStationGroupContainingMedia(mediaId) ?: return
+            activeStation = getRadioStation(group, mediaId)
             if (activeStation == null) {
                 //Unable to find the station to play
                 return
             }
 
+            activeStationGroupId = group.mediaItem.mediaId
+
             //Get and set the playback actions available when on this station
-            val stationIndex = getStationIndex(activeStation!!.mediaId)
-            radioPlayer.nextEnabled = stationIndex < stationsList.lastIndex
+            val stationIndex = group.getStationIndex(activeStation!!.mediaId)
+            radioPlayer.nextEnabled = stationIndex < group.stationList.lastIndex
             radioPlayer.previousEnabled = stationIndex != 0
-            val playbackActions = getPlaybackActionsForStation(stationIndex)
+            val playbackActions = group.getPlaybackActionsForStation(stationIndex)
 
             activeStation!!.play()
             val playbackState = PlaybackStateCompat.Builder()
@@ -145,17 +161,15 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .setActions(playbackActions)
                 .build()
             session.setPlaybackState(playbackState)
-            val media = stationsList.find { x -> return@find x.mediaId == mediaId }!!
+            val media = fullStationList.find { x -> return@find x.mediaId == mediaId }!!
             val metadata =  MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, media.mediaId)
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.description.title as String?)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, media.description.iconBitmap)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, media.description.iconUri.toString())
                 .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, media.description.description as String?)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, media.description.iconBitmap)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, media.description.iconUri.toString())
                 .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
-                .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "")
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, "")
                 .build()
             session.setMetadata(metadata)
         }
@@ -166,10 +180,11 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
             }
 
             //Get and set the playback actions available when on this station
-            val stationIndex = getStationIndex(activeStation!!.mediaId)
-            radioPlayer.nextEnabled = stationIndex < stationsList.lastIndex
+            val group = getStationGroup(activeStation!!.stationGroupId) ?: return
+            val stationIndex = group.getStationIndex(activeStation!!.mediaId)
+            radioPlayer.nextEnabled = stationIndex < group.stationList.lastIndex
             radioPlayer.previousEnabled = stationIndex != 0
-            val playbackActions = getPlaybackActionsForStation(stationIndex)
+            val playbackActions = group.getPlaybackActionsForStation(stationIndex)
 
             activeStation?.stop()
             val playbackState = PlaybackStateCompat.Builder()
@@ -185,10 +200,11 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
             }
 
             //Get and set the playback actions available when on this station
-            val stationIndex = getStationIndex(activeStation!!.mediaId)
-            radioPlayer.nextEnabled = stationIndex < stationsList.lastIndex
+            val group = getStationGroup(activeStation!!.stationGroupId) ?: return
+            val stationIndex = group.getStationIndex(activeStation!!.mediaId)
+            radioPlayer.nextEnabled = stationIndex < group.stationList.lastIndex
             radioPlayer.previousEnabled = stationIndex != 0
-            val playbackActions = getPlaybackActionsForStation(stationIndex)
+            val playbackActions = group.getPlaybackActionsForStation(stationIndex)
 
             activeStation?.stop()
             val playbackState = PlaybackStateCompat.Builder()
@@ -199,31 +215,30 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         }
 
         override fun onSkipToNext() {
-            if (activeStation == null) {
-                //No active station, so find the first one to play
-                val stationToPlay = getRadioStation()
-                if (stationToPlay == null) {
-                    //Must be no stations available
-                    return
-                } else {
-                    activeStation = stationToPlay
-                }
-            } else {
-                //There is an active station, find its index and move to the next one if available
-                val currentStationIndex = getStationIndex(activeStation!!.mediaId)
-                var nextStationIndex = currentStationIndex + 1
-                if (nextStationIndex >= stationsList.size) {
-                    //Loop back to start
-                    nextStationIndex = 0
-                }
-                activeStation = getRadioStation(stationsList[nextStationIndex].mediaId)
+            if (activeStation == null && activeStationGroupId == null) {
+                return
+            } else if (activeStation == null && activeStationGroupId != null) {
+                //Pick up the first station in the group
+                val group = getStationGroup(activeStationGroupId!!) ?: return
+                val firstStation = group.stationList.firstOrNull() ?: return
+                activeStation = getRadioStation(group, firstStation.mediaId!!)
             }
 
+            //There is an active station, find its index and move to the next one if available
+            val group = getStationGroup(activeStation!!.stationGroupId) ?: return
+            val stationIndex = group.getStationIndex(activeStation!!.mediaId)
+            var nextStationIndex = stationIndex + 1
+            if (nextStationIndex >= group.stationList.size) {
+                //Loop back to start
+                nextStationIndex = 0
+            }
+            activeStation = getRadioStation(group, group.stationList[nextStationIndex].mediaId!!)
+
+
             //Get and set the playback actions available when on this station
-            val stationIndex = getStationIndex(activeStation!!.mediaId)
-            radioPlayer.nextEnabled = stationIndex < stationsList.lastIndex
-            radioPlayer.previousEnabled = stationIndex != 0
-            val playbackActions = getPlaybackActionsForStation(stationIndex)
+            radioPlayer.nextEnabled = nextStationIndex < group.stationList.lastIndex
+            radioPlayer.previousEnabled = nextStationIndex != 0
+            val playbackActions = group.getPlaybackActionsForStation(nextStationIndex)
 
             activeStation?.play()
             val playbackState = PlaybackStateCompat.Builder()
@@ -231,44 +246,43 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .setActions(playbackActions)
                 .build()
             session.setPlaybackState(playbackState)
-            val media = stationsList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
+            val media = fullStationList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
             val metadata =  MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, media.mediaId)
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.description.title as String?)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, media.description.iconBitmap)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, media.description.iconUri.toString())
                 .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, media.description.description as String?)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, media.description.iconBitmap)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, media.description.iconUri.toString())
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
                 .build()
             session.setMetadata(metadata)
         }
 
         override fun onSkipToPrevious() {
-            if (activeStation == null) {
-                //No active station, so find the first one to play
-                val stationToPlay = getRadioStation()
-                if (stationToPlay == null) {
-                    //Must be no stations available
-                    return
-                } else {
-                    activeStation = stationToPlay
-                }
-            } else {
-                //There is an active station, find its index and move to the previous one if available
-                val currentStationIndex = getStationIndex(activeStation!!.mediaId)
-                var prevStationIndex = currentStationIndex - 1
-                if (prevStationIndex < 0) {
-                    //Loop back to end
-                    prevStationIndex = stationsList.lastIndex
-                }
-                activeStation = getRadioStation(stationsList[prevStationIndex].mediaId)
+            if (activeStation == null && activeStationGroupId == null) {
+                return
+            } else if (activeStation == null && activeStationGroupId != null) {
+                //Pick up the first station in the group
+                val group = getStationGroup(activeStationGroupId!!) ?: return
+                val firstStation = group.stationList.firstOrNull() ?: return
+                activeStation = getRadioStation(group, firstStation.mediaId!!)
             }
 
+            //There is an active station, find its index and move to the previous one if available
+            val group = getStationGroup(activeStation!!.stationGroupId) ?: return
+            val stationIndex = group.getStationIndex(activeStation!!.mediaId)
+            var prevStationIndex = stationIndex - 1
+            if (prevStationIndex < 0) {
+                //Loop back to end
+                prevStationIndex = group.stationList.lastIndex
+            }
+            activeStation = getRadioStation(group, group.stationList[prevStationIndex].mediaId!!)
+
             //Get and set the playback actions available when on this station
-            val stationIndex = getStationIndex(activeStation!!.mediaId)
-            radioPlayer.nextEnabled = stationIndex < stationsList.lastIndex
-            radioPlayer.previousEnabled = stationIndex != 0
-            val playbackActions = getPlaybackActionsForStation(stationIndex)
+            radioPlayer.nextEnabled = prevStationIndex < group.stationList.lastIndex
+            radioPlayer.previousEnabled = prevStationIndex != 0
+            val playbackActions = group.getPlaybackActionsForStation(prevStationIndex)
 
             activeStation?.play()
             val playbackState = PlaybackStateCompat.Builder()
@@ -276,14 +290,15 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .setActions(playbackActions)
                 .build()
             session.setPlaybackState(playbackState)
-            val media = stationsList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
+            val media = fullStationList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
             val metadata =  MediaMetadataCompat.Builder()
                 .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, media.mediaId)
                 .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.description.title as String?)
                 .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, media.description.iconBitmap)
+                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, media.description.iconUri.toString())
                 .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, media.description.description as String?)
-                .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, media.description.iconBitmap)
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, media.description.iconUri.toString())
+                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
                 .build()
             session.setMetadata(metadata)
         }
@@ -309,7 +324,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 setSessionActivity(sessionActivityPendingIntent)
                 val playbackState = PlaybackStateCompat.Builder()
                     .setState(PlaybackStateCompat.STATE_STOPPED, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1F)
-                    .setActions(getPlaybackActions())
+                    .setActions(PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH)
                     .build()
                 setPlaybackState(playbackState)
                 isActive = true
@@ -329,46 +344,26 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         )
         notificationManager.showNotificationForPlayer(radioPlayer)
 
-        stationsList = getStationsList()
+        stationGroups = getStationGroups()
+        fullStationList = getFullStationList()
     }
 
-    private fun getStationsList(): ArrayList<MediaItem> {
+    private fun getStationGroups(): ArrayList<StationGroup> {
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val radioPath = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "") ?: return ArrayList()
+        if (radioPath.isBlank()) { return ArrayList() }
+        val dir = DocumentFile.fromTreeUri(applicationContext, Uri.parse(radioPath))
 
-        val list = ArrayList<MediaItem>()
-        val dir = File(radioPath)
-
-        val subDirs = dir.list(FilenameFilter { file, _ ->
-            return@FilenameFilter file.isDirectory
-        }) ?: return ArrayList()
+        val list = ArrayList<StationGroup>()
+        val subDirs = (dir?.listFiles() ?: emptyArray()).filter { x -> x.isDirectory }
         for (subDir in subDirs) {
-            //Skip the Adverts folder since its not a standalone station
-            if (subDir.endsWith("Adverts")) { continue }
-
-            val stationName = subDir
-            val logoUri: String? = (File("$radioPath/$subDir").listFiles(FileFilter { file: File ->
-                return@FileFilter file.isFile && file.name.contains("logo")
-            } )?: emptyArray()).firstOrNull()?.path
-
-            if (stationName.isNotBlank()) {
-                val logo = BitmapFactory.decodeFile(logoUri)
-                val metadata = MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, stationName)
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, stationName)
-                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, logo)
-                    .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, stationName)
-                    .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
-                    .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, logo)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "")
-                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, "")
-                    .build()
-                val item = MediaItem(metadata.description, MediaItem.FLAG_PLAYABLE)
-                list.add(item)
-            }
+            list.add(StationGroup(subDir, applicationContext))
         }
         return list
+    }
+
+    private fun getFullStationList(): ArrayList<MediaItem> {
+        return ArrayList(stationGroups.map { x -> x.stationList }.flatten())
     }
 
     override fun onDestroy() {
@@ -388,67 +383,69 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
     }
 
     override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaItem>>) {
-        result.sendResult(stationsList)
+        if (parentId.isBlank() || parentId == "root") {
+            val groups = ArrayList(stationGroups.map { x -> x.mediaItem })
+            result.sendResult(groups)
+            return
+        }
+        val group = stationGroups.find { x -> x.mediaItem.mediaId == parentId }
+        val stations = group?.stationList ?: ArrayList()
+        result.sendResult(stations)
     }
 
-    private fun getRadioStation(mediaId: String? = null): RadioStation? {
+    private fun getRadioStation(group: StationGroup, mediaId: String): RadioStation? {
         //Get the mediaId of the first station if none is provided
-        var mediaIdToGet = mediaId
-        if (mediaIdToGet.isNullOrBlank()) {
-            if (stationsList.isEmpty()) {
-                return null
-            } else {
-                mediaIdToGet = stationsList.first().mediaId
-            }
+        if (mediaId.isBlank()) {
+            return null
         }
 
-        if (!stationsList.any { x -> x.mediaId == mediaIdToGet }) {
+        if (!fullStationList.any { x -> x.mediaId == mediaId }) {
             //Someone is asking us to play something that doesn't exist
             return null
         }
 
-        if (mediaIdToGet.isNullOrBlank()) {
+        if (mediaId.isBlank()) {
             //Really lost here, nothing has been found for this id
             return null
         }
 
         //Let's do a lookup and see if this is cached already
-        if (stationCache.containsKey(mediaIdToGet)) {
-            return stationCache[mediaIdToGet]
+        if (stationCache.containsKey(mediaId)) {
+            return stationCache[mediaId]
         }
 
         //Didn't have the station cached yet, so lets build it and cache it
-        val station = buildRadioStation(mediaIdToGet)
-        stationCache[station.mediaId] = station
+        val station = buildRadioStation(group, mediaId)
+        if (station != null) {
+            stationCache[station.mediaId] = station
+        }
         return station
     }
 
-    private fun buildRadioStation(mediaId: String): RadioStation {
+    private fun buildRadioStation(group: StationGroup, mediaId: String): RadioStation? {
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(applicationContext)
-        val radioPath = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
         val adsEnabled = sharedPref?.getBoolean(getString(R.string.ads_enabled_preference_key), false) ?: false
         val weatherChatterEnabled = sharedPref?.getBoolean(getString(R.string.weather_chatter_enabled_preference_key), false) ?: false
 
-        return RadioStation(mediaId,"$radioPath/$mediaId", "$radioPath/Adverts", radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
-    }
+        val stationMedia = group.stationList.find { x -> x.mediaId == mediaId }!!
+        val stationDoc = group.folderDoc.listFiles().find { x -> x.isDirectory && x.uri.toString() == stationMedia.mediaId } ?: return null
 
-    private fun getStationIndex(stationMediaId: String): Int {
-        return stationsList.indexOfFirst { x -> x.mediaId == stationMediaId }
-    }
-
-    private fun getPlaybackActionsForStation(stationIndex: Int): Long {
-        return getPlaybackActions((stationIndex < stationsList.lastIndex), (stationIndex > 0))
-    }
-
-    private fun getPlaybackActions(hasNext: Boolean = false, hasPrevious: Boolean = false): Long {
-        if (hasNext && hasPrevious) {
-            return PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
-        } else if (hasNext) {
-            return PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH or PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-        } else if (hasPrevious) {
-            return PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+        if (group.generation == 1) {
+            return Gen1RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationDoc,  radioPlayer, applicationContext)
+        } else if (group.generation == 2) {
+            val advertsDoc = group.folderDoc.listFiles().find { x -> x.name?.contains("Adverts") == true } ?: return null
+            return Gen2RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationDoc, advertsDoc, radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
+        } else {
+            return null
         }
-        return PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_STOP or PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID or PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+    }
+
+    private fun getStationGroupContainingMedia(mediaId: String): StationGroup? {
+        return stationGroups.find { x -> x.stationList.any { y -> y.mediaId == mediaId } }
+    }
+
+    private fun getStationGroup(stationGroupId: String): StationGroup? {
+        return stationGroups.find { x -> x.mediaItem.mediaId == stationGroupId }
     }
 
     /**

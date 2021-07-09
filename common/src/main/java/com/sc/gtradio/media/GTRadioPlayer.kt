@@ -69,9 +69,17 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return -1L
     }
 
+    fun getCurrentTrackDuration(): Long {
+        return exoPlayer.duration
+    }
+
     override fun getCurrentPosition(): Long {
         //For a faux live-stream, we never really know the official "position" we are in
         return -1L
+    }
+
+    fun getCurrentTrackPosition(): Long {
+        return exoPlayer.currentPosition
     }
 
     override fun isCommandAvailable(command: Int): Boolean {

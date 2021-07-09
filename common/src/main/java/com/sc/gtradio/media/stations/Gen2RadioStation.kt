@@ -1,30 +1,29 @@
-package com.sc.gtradio.media
+package com.sc.gtradio.media.stations
 
 import android.content.Context
+import android.net.Uri
 import android.support.v4.media.session.PlaybackStateCompat
-import androidx.core.net.toUri
-import com.google.android.exoplayer2.ExoPlaybackException
+import androidx.documentfile.provider.DocumentFile
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
-import kotlinx.coroutines.*
-import java.io.File
-import java.io.FilenameFilter
+import com.sc.gtradio.media.GTRadioPlayer
 import java.util.*
 
-class RadioStation(
-    val mediaId: String,
-    baseStationPath: String,
-    advertsPath: String,
+class Gen2RadioStation(
+    override val stationGroupId: String,
+    override val mediaId: String,
+    baseStationFolderDoc: DocumentFile,
+    advertsFolderDoc: DocumentFile,
     private val player: GTRadioPlayer,
     private val context: Context,
-    var adsEnabled: Boolean,
-    private var _weatherChatterEnabled: Boolean) {
+    override var adsEnabled: Boolean,
+    private var _weatherChatterEnabled: Boolean) : RadioStation {
 
-    var weatherChatterEnabled: Boolean
+    override var weatherChatterEnabled: Boolean
         get() = _weatherChatterEnabled
         set(enabled) {
             if (enabled != _weatherChatterEnabled) {
@@ -34,25 +33,25 @@ class RadioStation(
             }
         }
 
-    var stationName: String = ""
+    override var stationName: String = ""
 
-    private var advertFiles: Array<String> = emptyArray()
-    private var announcerFiles:  Array<String> = emptyArray()
-    private var djMorningFiles:  Array<String> = emptyArray()
-    private var djEveningFiles:  Array<String> = emptyArray()
-    private var djNightFiles: Array<String> = emptyArray()
-    private var djOtherFiles: Array<String> = emptyArray()
-    private var djWeatherFogFiles: Array<String> = emptyArray()
-    private var djWeatherRainFiles: Array<String> = emptyArray()
-    private var djWeatherSunFiles: Array<String> = emptyArray()
-    private var djWeatherStormFiles: Array<String> = emptyArray()
-    private var songFolders: Array<String> = emptyArray()
-    private var currentDJFiles: Array<String> = emptyArray()
+    private var advertFiles: Array<Uri> = emptyArray()
+    private var announcerFiles:  Array<Uri> = emptyArray()
+    private var djMorningFiles:  Array<Uri> = emptyArray()
+    private var djEveningFiles:  Array<Uri> = emptyArray()
+    private var djNightFiles: Array<Uri> = emptyArray()
+    private var djOtherFiles: Array<Uri> = emptyArray()
+    private var djWeatherFogFiles: Array<Uri> = emptyArray()
+    private var djWeatherRainFiles: Array<Uri> = emptyArray()
+    private var djWeatherSunFiles: Array<Uri> = emptyArray()
+    private var djWeatherStormFiles: Array<Uri> = emptyArray()
+    private var songs: Array<Song> = emptyArray()
+    private var currentDJFiles: Array<Uri> = emptyArray()
 
-    private var advertIterator: Iterator<String>? = null
-    private var announcerIterator: Iterator<String>? = null
-    private var djIterator: Iterator<String>? = null
-    private var songIterator: Iterator<String>? = null
+    private var advertIterator: Iterator<Uri>? = null
+    private var announcerIterator: Iterator<Uri>? = null
+    private var djIterator: Iterator<Uri>? = null
+    private var songIterator: Iterator<Song>? = null
 
     private var _playing = false
     private var lastSegment = RadioSegmentType.None
@@ -60,76 +59,51 @@ class RadioStation(
     private var activeListener: Player.Listener? = null
     private val rng = Random()
 
-    private var playFailureCount = 0
-
     init {
-        stationName = getStationName(baseStationPath)
-        val dir = File(baseStationPath)
-        val subDirs = dir.list(FilenameFilter { file: File, _: String ->
-            Boolean
-            return@FilenameFilter file.isDirectory
-        })
-        if (subDirs != null) {
-            for (subDir in subDirs) {
-                val currentFolder = "$baseStationPath/$subDir"
-
-                if (subDir.isNotBlank()) {
-                    when(subDir) {
-                        "Announcer" -> { setupAnnouncerFiles(currentFolder) }
-                        "DJ Chatter" -> { setupDJFiles(currentFolder) }
-                        "Songs" -> { setupSongFolders(currentFolder) }
-                    }
-                }
+        stationName = getStationName(baseStationFolderDoc)
+        val subDirs = baseStationFolderDoc.listFiles().filter { x -> x.isDirectory }
+        for (subDir in subDirs) {
+            when(subDir.name) {
+                "Announcer" -> { setupAnnouncerFiles(subDir) }
+                "DJ Chatter" -> { setupDJFiles(subDir) }
+                "Songs" -> { setupSongs(subDir) }
             }
         }
 
-        setupAdvertFiles(advertsPath)
+        setupAdvertFiles(advertsFolderDoc)
         randomizeAll()
     }
 
-    private fun getStationName(stationPath: String): String {
-        if (stationPath.isBlank()) return ""
-        val split = stationPath.split('\\')
-        return split[split.lastIndex]
+    private fun getStationName(stationDoc: DocumentFile): String {
+        return stationDoc.name ?: ""
     }
 
-    private fun setupAnnouncerFiles(folder: String) {
-        if (folder.isNotBlank()) {
-            announcerFiles = (File(folder).list() ?: emptyArray()).map { return@map "$folder/$it" }.toTypedArray()
-        }
+    private fun setupAnnouncerFiles(folder: DocumentFile) {
+            announcerFiles = folder.listFiles().map { x -> x.uri }.toTypedArray()
     }
 
-    private fun setupAdvertFiles(folder: String) {
-        if (folder.isNotBlank()) {
-            advertFiles = (File(folder).list() ?: emptyArray()).map { return@map "$folder/$it" }.toTypedArray()
-        }
+    private fun setupAdvertFiles(folder: DocumentFile) {
+        advertFiles = folder.listFiles().map { x -> x.uri }.toTypedArray()
     }
 
-    private fun setupDJFiles(folder: String) {
-        if (folder.isNotBlank()) {
-            djMorningFiles = (File("$folder/Morning").list() ?: emptyArray()).map { return@map "$folder/Morning/$it" }.toTypedArray()
-            djEveningFiles = (File("$folder/Evening").list() ?: emptyArray()).map { return@map "$folder/Evening/$it" }.toTypedArray()
-            djNightFiles = (File("$folder/Night").list() ?: emptyArray()).map { return@map "$folder/Night/$it" }.toTypedArray()
-            djOtherFiles = (File("$folder/Other").list() ?: emptyArray()).map { return@map "$folder/Other/$it" }.toTypedArray()
+    private fun setupDJFiles(folder: DocumentFile) {
+        djMorningFiles = (folder.listFiles().firstOrNull { x -> x.name == "Morning" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djEveningFiles = (folder.listFiles().firstOrNull { x -> x.name == "Evening" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djNightFiles = (folder.listFiles().firstOrNull { x -> x.name == "Night" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djOtherFiles = (folder.listFiles().firstOrNull { x -> x.name == "Other" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
 
-            val weatherFolders = (File("$folder/Weather").list() ?: emptyArray()).map { return@map "$folder/Weather/$it" }.toTypedArray()
-            if (weatherFolders.isNotEmpty()) {
-                djWeatherFogFiles = (File("$folder/Weather/Fog").list() ?: emptyArray()).map { return@map "$folder/Weather/Fog/$it" }.toTypedArray()
-                djWeatherRainFiles = (File("$folder/Weather/Rain").list() ?: emptyArray()).map { return@map "$folder/Weather/Rain/$it" }.toTypedArray()
-                djWeatherSunFiles = (File("$folder/Weather/Sun").list() ?: emptyArray()).map { return@map "$folder/Weather/Sun/$it" }.toTypedArray()
-                djWeatherStormFiles = (File("$folder/Weather/Storm").list() ?: emptyArray()).map { return@map "$folder/Weather/Storm/$it" }.toTypedArray()
-            }
+        val weatherFolders =  folder.listFiles().firstOrNull { x -> x.name == "Weather" }
+        if (weatherFolders != null && weatherFolders.listFiles().isNotEmpty()) {
+            djWeatherFogFiles = (weatherFolders.listFiles().firstOrNull { x -> x.name == "Fog" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherRainFiles = (weatherFolders.listFiles().firstOrNull { x -> x.name == "Rain" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherSunFiles = (weatherFolders.listFiles().firstOrNull { x -> x.name == "Sun" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherStormFiles = (weatherFolders.listFiles().firstOrNull { x -> x.name == "Storm" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
         }
+
     }
 
-    private fun setupSongFolders(folder: String) {
-        if (folder.isNotBlank()) {
-            songFolders = (File(folder).list(FilenameFilter { file: File, _: String ->
-                return@FilenameFilter file.isDirectory
-            }) ?: emptyArray()).map {
-                return@map "$folder/$it"
-            }.toTypedArray()
-        }
+    private fun setupSongs(folder: DocumentFile) {
+            songs = folder.listFiles().map { x -> Song(x) }.toTypedArray()
     }
 
     private fun randomizeAll() {
@@ -159,7 +133,7 @@ class RadioStation(
         //Note: There is no afternoon slot currently based on the anticipated user dataset
         val now = Calendar.getInstance()
         val currentHour = now.get(Calendar.HOUR_OF_DAY)
-        var arrToConcat: Array<String> = emptyArray()
+        var arrToConcat: Array<Uri> = emptyArray()
         if (currentHour in 3..12) {
             //Morning (3am-noon) (03:00 to 12:00)
             arrToConcat = djMorningFiles
@@ -186,46 +160,47 @@ class RadioStation(
     }
 
     private fun randomizeSongFolders() {
-        songFolders.shuffle()
-        songIterator = songFolders.iterator()
+        songs.shuffle()
+        songIterator = songs.iterator()
     }
 
-    private fun getNextAdvertFile(): String {
+    private fun getNextAdvertFile(): Uri {
         if (!advertIterator!!.hasNext()) {
             randomizeAdvertFiles()
         }
         return advertIterator!!.next()
     }
 
-    private fun getNextAnnouncerFile(): String {
+    private fun getNextAnnouncerFile(): Uri {
         if (!announcerIterator!!.hasNext()) {
             randomizeAnnouncerFiles()
         }
         return announcerIterator!!.next()
     }
 
-    private fun getNextDjFile(): String {
+    private fun getNextDjFile(): Uri {
         if (!djIterator!!.hasNext()) {
             randomizeDJFiles()
         }
         return djIterator!!.next()
     }
 
-    private fun getNextSongFolder(): String {
+    private fun getNextSongFolder(): Song {
         if (!songIterator!!.hasNext()) {
             randomizeSongFolders()
         }
         return songIterator!!.next()
     }
 
-    fun stop() {
+    override fun stop() {
         _playing = false
         player.stop()
     }
 
-    fun play() {
+    override fun play() {
         _playing = true
         player.radioPlaybackState = PlaybackStateCompat.STATE_PLAYING
+        player.repeatMode = Player.REPEAT_MODE_OFF
         playNext()
     }
 
@@ -351,57 +326,49 @@ class RadioStation(
         }
     }
 
-    private fun playSong(songFolder: String, requireDjIntro: Boolean = false, requireDjOutro: Boolean = false)
+    private fun playSong(song: Song, requireDjIntro: Boolean = false, requireDjOutro: Boolean = false)
     {
-        val songFiles = (File(songFolder).list()  ?: emptyArray())
-        val mainSongPath = songFolder + "/" + songFiles.find { x -> return@find !x.contains("(Intro") && !x.contains("(Outro") }
-        //Intros
-        val mainIntro = songFolder + "/" + songFiles.find { x -> return@find x.contains("(Intro)") }
-        val djIntros = songFiles.filter { x -> return@filter x.contains("(Intro DJ") }.map { x -> return@map "$songFolder/$x" }
-        //Outros
-        val mainOutro = songFolder + "/" + songFiles.find { x -> return@find x.contains("(Outro)") }
-        val djOutros = songFiles.filter { x -> return@filter x.contains("(Outro DJ") }.map { x -> return@map "$songFolder/$x" }
+        if (song.mainIntroUri == null || song.mainSongUri == null || song.mainOutroUri == null) {
+            return
+        }
 
-        val introToUse: String
-        if (requireDjIntro && djIntros.isNotEmpty()) {
+        val introToUse: Uri
+        if (requireDjIntro && song.djIntroUris.isNotEmpty()) {
             //Use a random dj intro
-            val introIndex = rng.nextInt(djIntros.size)
-            introToUse = djIntros[introIndex]
+            val introIndex = rng.nextInt(song.djIntroUris.size)
+            introToUse = song.djIntroUris[introIndex]
         } else {
             val djOrStandard = rng.nextInt(11)
-            if (djOrStandard < 6 && djIntros.isNotEmpty()) {
+            if (djOrStandard < 6 && song.djIntroUris.isNotEmpty()) {
                 //Use a DJ intro
-                val introIndex = rng.nextInt(djIntros.size)
-                introToUse = djIntros[introIndex]
+                val introIndex = rng.nextInt(song.djIntroUris.size)
+                introToUse = song.djIntroUris[introIndex]
             } else {
-                introToUse = mainIntro
+                introToUse = song.mainIntroUri
             }
         }
 
-        val outroToUse: String
-        if (requireDjOutro && djOutros.isNotEmpty()) {
+        val outroToUse: Uri
+        if (requireDjOutro && song.djOutroUris.isNotEmpty()) {
             //Use a random dj outro
-            val outroIndex = rng.nextInt(djOutros.size)
-            outroToUse = djOutros[outroIndex]
+            val outroIndex = rng.nextInt(song.djOutroUris.size)
+            outroToUse = song.djOutroUris[outroIndex]
         } else {
             val djOrStandard = rng.nextInt(11)
-            if (djOrStandard < 6 && djOutros.isNotEmpty()) {
+            if (djOrStandard < 6 && song.djOutroUris.isNotEmpty()) {
                 //Use a DJ outro
-                val outroIndex = rng.nextInt(djOutros.size)
-                outroToUse = djOutros[outroIndex]
+                val outroIndex = rng.nextInt(song.djOutroUris.size)
+                outroToUse = song.djOutroUris[outroIndex]
             } else {
-                outroToUse = mainOutro
+                outroToUse = song.mainOutroUri
             }
         }
 
-        val introFile = File(introToUse)
-        val introSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(introFile.toUri()))
+        val introSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(introToUse))
 
-        val mainFile = File(mainSongPath)
-        val mainSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(mainFile.toUri()))
+        val mainSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(song.mainSongUri))
 
-        val outroFile = File(outroToUse)
-        val outroSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(outroFile.toUri()))
+        val outroSrc = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(outroToUse))
 
         // Prepare the player.
         val concatSource = ConcatenatingMediaSource(true)
@@ -423,11 +390,10 @@ class RadioStation(
         player.play()
     }
 
-    private fun playFile(file: String)
+    private fun playFile(file: Uri)
     {
         // Set the media item to be played.
-        val fileToPlay = File(file)
-        val src = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(fileToPlay.toUri()))
+        val src = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(MediaItem.fromUri(file))
         // Prepare the player.
         player.setMediaSource(src)
 
@@ -447,5 +413,11 @@ class RadioStation(
         player.play()
     }
 
-
+    private inner class Song(songFolderDoc: DocumentFile?) {
+        val mainSongUri: Uri? = (songFolderDoc?.listFiles() ?: emptyArray()).find { x -> x.name?.contains("(Intro") == false && x.name?.contains("(Outro") == false }?.uri
+        val mainIntroUri: Uri? = (songFolderDoc?.listFiles() ?: emptyArray()).find { x -> x.name?.contains("(Intro)") == true}?.uri
+        val mainOutroUri: Uri? = (songFolderDoc?.listFiles() ?: emptyArray()).find { x -> x.name?.contains("(Outro)") == true}?.uri
+        val djIntroUris: Array<Uri> = (songFolderDoc?.listFiles() ?: emptyArray()).filter { x -> x.name?.contains("(Intro DJ") == true }.map { x -> x.uri }.toTypedArray()
+        val djOutroUris: Array<Uri> = (songFolderDoc?.listFiles() ?: emptyArray()).filter { x -> x.name?.contains("(Outro DJ") == true }.map { x -> x.uri }.toTypedArray()
+    }
 }

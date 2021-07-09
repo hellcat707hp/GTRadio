@@ -7,8 +7,18 @@
 
     <fragment
         android:id="@+id/FirstFragment"
+        android:name="com.sc.gtradio.GroupList"
+        android:label="@string/app_name"
+        tools:layout="@layout/fragment_grouplist">
+    </fragment>
+
+    <fragment
+        android:id="@+id/SecondFragment"
         android:name="com.sc.gtradio.RadioList"
         android:label="@string/radio_list_label"
         tools:layout="@layout/radio_list">
+        <argument
+            android:name="stationGroupId"
+            app:argType="string" />
     </fragment>
 </navigation>

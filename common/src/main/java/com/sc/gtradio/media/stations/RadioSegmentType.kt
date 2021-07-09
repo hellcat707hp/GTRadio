@@ -1,4 +1,4 @@
-package com.sc.gtradio.media
+package com.sc.gtradio.media.stations
 
 enum class RadioSegmentType(val value: Int) {
     None(0),

@@ -13,49 +13,31 @@ import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.preference.PreferenceManager
-import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
+import com.sc.gtradio.databinding.FragmentGrouplistBinding
+import com.sc.gtradio.databinding.FragmentStationgroupitemBinding
+import com.sc.gtradio.media.MusicServiceConnection
 import com.sc.gtradio.utils.InjectorUtils
-import com.sc.gtradio.databinding.FragmentStationitemBinding
-import com.sc.gtradio.databinding.RadioListBinding
-import com.sc.gtradio.media.*
 
-class RadioList : Fragment() {
-    var stationGroupId: String = ""
-
-    private var _binding: RadioListBinding? = null
+class GroupList : Fragment() {
+    private var _binding: FragmentGrouplistBinding? = null
 
     private var musicServiceConnection: MusicServiceConnection? = null
 
     private val subscriptionCallback = object : MediaBrowserCompat.SubscriptionCallback() {
         override fun onChildrenLoaded(parentId: String, children: List<MediaBrowserCompat.MediaItem>) {
-            if (parentId == stationGroupId) {
-                listAdapter.submitList(children)
-            }
+            listAdapter.submitList(children)
         }
     }
 
-    private val listAdapter = MediaItemListAdapter { clickedItem ->
-        val nowPlaying = musicServiceConnection?.nowPlaying?.value
-        val transportControls = musicServiceConnection?.transportControls
+    private val listAdapter = StationGroupMediaItemListAdapter { clickedItem ->
 
-        if (clickedItem.mediaId == nowPlaying?.description?.mediaId) {
-            musicServiceConnection!!.playbackState.value?.let { playbackState ->
-                when {
-                    playbackState.isPlaying ->
-                        transportControls?.stop()
-                    playbackState.isPlayEnabled ->
-                        transportControls?.play()
-                    else -> {
-                        transportControls?.play()
-                    }
-                }
-            }
-        } else {
-            transportControls?.playFromMediaId(clickedItem.mediaId, null)
-        }
+        musicServiceConnection?.sendCommand("setActiveStationGroupId", Bundle().apply { this.putString("stationGroupId", clickedItem.mediaId) })
+        //This is real ugly
+        (activity as MainActivity).navigateToRadioList(clickedItem.mediaId)
+
     }
 
     // This property is only valid between onCreateView and onDestroyView.
@@ -70,7 +52,7 @@ class RadioList : Fragment() {
             return intent
         }
     }
-    private val permissionResultLauncher = activity?.registerForActivityResult(contract)
+    private val permissionResultLauncher = registerForActivityResult(contract)
     { result: Uri ->
         activity?.contentResolver?.takePersistableUriPermission(result, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(activity?.applicationContext)
@@ -78,19 +60,17 @@ class RadioList : Fragment() {
             this?.putString(getString(R.string.radio_folders_uri_key), result.toString())
             this?.apply()
         }
+
     }
 
-
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
-        stationGroupId = arguments?.getString("stationGroupId") ?: ""
         if (musicServiceConnection == null) {
             musicServiceConnection = InjectorUtils.provideMusicServiceConnection(requireContext()).also {
-                it.subscribe(stationGroupId, subscriptionCallback)
+                it.subscribe("root", subscriptionCallback)
             }
         }
 
-        _binding = RadioListBinding.inflate(inflater, container, false)
+        _binding = FragmentGrouplistBinding.inflate(inflater, container, false)
         return binding.root
     }
 
@@ -98,7 +78,7 @@ class RadioList : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.buttonSelect.setOnClickListener {
-            permissionResultLauncher?.launch(null)
+            permissionResultLauncher.launch(null)
         }
 
         updateLibrarySelectedComponents()
@@ -132,18 +112,18 @@ class RadioList : Fragment() {
 }
 
 
-class MediaItemListAdapter(
+class StationGroupMediaItemListAdapter(
     private val itemClickedListener: (MediaBrowserCompat.MediaItem) -> Unit
-) : ListAdapter<MediaBrowserCompat.MediaItem, MediaViewHolder>(MediaItemDiffCallback) {
+) : ListAdapter<MediaBrowserCompat.MediaItem, StationGroupViewHolder>(MediaItemDiffCallback) {
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): MediaViewHolder {
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): StationGroupViewHolder {
         val inflater = LayoutInflater.from(parent.context)
-        val binding = FragmentStationitemBinding.inflate(inflater, parent, false)
-        return MediaViewHolder(binding, itemClickedListener)
+        val binding = FragmentStationgroupitemBinding.inflate(inflater, parent, false)
+        return StationGroupViewHolder(binding, itemClickedListener)
     }
 
     override fun onBindViewHolder(
-        holder: MediaViewHolder,
+        holder: StationGroupViewHolder,
         position: Int,
         payloads: MutableList<Any>
     ) {
@@ -156,22 +136,22 @@ class MediaItemListAdapter(
         if (fullRefresh) {
             holder.item = mediaItem
             holder.titleView.text = mediaItem.description.title
-            holder.albumArt.setImageURI(mediaItem.description.iconUri)
+            holder.groupArt.setImageURI(mediaItem.description.iconUri)
         }
     }
 
-    override fun onBindViewHolder(holder: MediaViewHolder, position: Int) {
+    override fun onBindViewHolder(holder: StationGroupViewHolder, position: Int) {
         onBindViewHolder(holder, position, mutableListOf())
     }
 }
 
-class MediaViewHolder(
-    binding: FragmentStationitemBinding,
+class StationGroupViewHolder(
+    binding: FragmentStationgroupitemBinding,
     itemClickedListener: (MediaBrowserCompat.MediaItem) -> Unit
 ) : RecyclerView.ViewHolder(binding.root) {
 
-    val titleView: TextView = binding.title
-    val albumArt: ImageView = binding.albumArt
+    val titleView: TextView = binding.groupTitle
+    val groupArt: ImageView = binding.groupArt
 
     var item: MediaBrowserCompat.MediaItem? = null
 
@@ -182,16 +162,3 @@ class MediaViewHolder(
     }
 }
 
-val MediaItemDiffCallback =  object : DiffUtil.ItemCallback<MediaBrowserCompat.MediaItem>() {
-    override fun areItemsTheSame(
-        oldItem: MediaBrowserCompat.MediaItem,
-        newItem: MediaBrowserCompat.MediaItem
-    ): Boolean =
-        oldItem.mediaId == newItem.mediaId
-
-    override fun areContentsTheSame(oldItem: MediaBrowserCompat.MediaItem, newItem: MediaBrowserCompat.MediaItem) =
-        oldItem.mediaId == newItem.mediaId
-
-    override fun getChangePayload(oldItem: MediaBrowserCompat.MediaItem, newItem: MediaBrowserCompat.MediaItem): Nothing? =
-        null
-}

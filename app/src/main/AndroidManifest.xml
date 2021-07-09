@@ -3,6 +3,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.sc.gtradio">
 
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -11,12 +13,6 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.GTRadio">
-        <activity
-            android:name=".SelectLibraryActivity"
-            android:label="@string/title_activity_select_library"
-            android:theme="@style/Theme.GTRadio.NoActionBar">
-            <meta-data android:name="android.support.PARENT_ACTIVITY" android:value=".SettingsActivity"/>
-        </activity>
         <activity
             android:name=".SettingsActivity"
             android:label="@string/title_activity_settings"
@@ -53,7 +49,5 @@
             </intent-filter>
         </service>
     </application>
-
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
 </manifest>

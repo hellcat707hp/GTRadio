@@ -9,7 +9,6 @@ import android.os.Bundle
 import android.os.ResultReceiver
 import androidx.preference.PreferenceManager
 import android.support.v4.media.MediaBrowserCompat.MediaItem
-import android.support.v4.media.MediaMetadataCompat
 import androidx.media.MediaBrowserServiceCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
@@ -109,6 +108,10 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 activeStation = getRadioStation(group, firstStation.mediaId!!)
             }
 
+            if (activeStation == null) {
+                return
+            }
+
             //Get and set the playback actions available when on this station
             val group = getStationGroup(activeStation!!.stationGroupId) ?: return
             val stationIndex = group.getStationIndex(activeStation!!.mediaId)
@@ -122,17 +125,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .setActions(playbackActions)
                 .build()
             session.setPlaybackState(playbackState)
-            val media = fullStationList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
-            val metadata =  MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, media.mediaId)
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.description.title as String?)
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, media.description.iconUri.toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, media.description.description as String?)
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, media.description.iconUri.toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
-                .build()
-            session.setMetadata(metadata)
+            session.setMetadata(activeStation!!.metadata)
         }
 
         override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
@@ -161,17 +154,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .setActions(playbackActions)
                 .build()
             session.setPlaybackState(playbackState)
-            val media = fullStationList.find { x -> return@find x.mediaId == mediaId }!!
-            val metadata =  MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, media.mediaId)
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.description.title as String?)
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, media.description.iconUri.toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, media.description.description as String?)
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, media.description.iconUri.toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
-                .build()
-            session.setMetadata(metadata)
+            session.setMetadata(activeStation!!.metadata)
         }
 
         override fun onPause() {
@@ -234,6 +217,9 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
             }
             activeStation = getRadioStation(group, group.stationList[nextStationIndex].mediaId!!)
 
+            if (activeStation == null) {
+                return
+            }
 
             //Get and set the playback actions available when on this station
             radioPlayer.nextEnabled = nextStationIndex < group.stationList.lastIndex
@@ -246,17 +232,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .setActions(playbackActions)
                 .build()
             session.setPlaybackState(playbackState)
-            val media = fullStationList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
-            val metadata =  MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, media.mediaId)
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.description.title as String?)
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, media.description.iconUri.toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, media.description.description as String?)
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, media.description.iconUri.toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
-                .build()
-            session.setMetadata(metadata)
+            session.setMetadata(activeStation!!.metadata)
         }
 
         override fun onSkipToPrevious() {
@@ -279,6 +255,10 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
             }
             activeStation = getRadioStation(group, group.stationList[prevStationIndex].mediaId!!)
 
+            if (activeStation == null) {
+                return
+            }
+
             //Get and set the playback actions available when on this station
             radioPlayer.nextEnabled = prevStationIndex < group.stationList.lastIndex
             radioPlayer.previousEnabled = prevStationIndex != 0
@@ -290,17 +270,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .setActions(playbackActions)
                 .build()
             session.setPlaybackState(playbackState)
-            val media = fullStationList.find { x -> return@find x.mediaId == activeStation?.mediaId }!!
-            val metadata =  MediaMetadataCompat.Builder()
-                .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, media.mediaId)
-                .putString(MediaMetadataCompat.METADATA_KEY_TITLE, media.description.title as String?)
-                .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, media.description.iconUri.toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, media.description.description as String?)
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, media.description.iconUri.toString())
-                .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
-                .build()
-            session.setMetadata(metadata)
+            session.setMetadata(activeStation!!.metadata)
         }
 
     }
@@ -417,7 +387,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         //Didn't have the station cached yet, so lets build it and cache it
         val station = buildRadioStation(group, mediaId)
         if (station != null) {
-            stationCache[station.mediaId] = station
+            stationCache[station.mediaItem.mediaId!!] = station
         }
         return station
     }
@@ -431,10 +401,10 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         val stationDoc = group.folderDoc.listFiles().find { x -> x.isDirectory && x.uri.toString() == stationMedia.mediaId } ?: return null
 
         if (group.generation == 1) {
-            return Gen1RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationDoc,  radioPlayer, applicationContext)
+            return Gen1RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc,  radioPlayer, applicationContext)
         } else if (group.generation == 2) {
             val advertsDoc = group.folderDoc.listFiles().find { x -> x.name?.contains("Adverts") == true } ?: return null
-            return Gen2RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationDoc, advertsDoc, radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
+            return Gen2RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc, advertsDoc, radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
         } else {
             return null
         }

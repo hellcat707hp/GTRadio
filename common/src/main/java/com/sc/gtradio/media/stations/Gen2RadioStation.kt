@@ -2,6 +2,8 @@ package com.sc.gtradio.media.stations
 
 import android.content.Context
 import android.net.Uri
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.documentfile.provider.DocumentFile
 import com.google.android.exoplayer2.MediaItem
@@ -16,6 +18,7 @@ import java.util.*
 class Gen2RadioStation(
     override val stationGroupId: String,
     override val mediaId: String,
+    override val mediaItem: MediaBrowserCompat.MediaItem,
     baseStationFolderDoc: DocumentFile,
     advertsFolderDoc: DocumentFile,
     private val player: GTRadioPlayer,
@@ -32,6 +35,17 @@ class Gen2RadioStation(
                 randomizeDJFiles()
             }
         }
+
+    override val metadata: MediaMetadataCompat =
+        MediaMetadataCompat.Builder()
+            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaItem.mediaId)
+            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, mediaItem.description.title as String?)
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, mediaItem.description.iconBitmap)
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, mediaItem.description.description as String?)
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, mediaItem.description.iconBitmap)
+            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
+            .build()
 
     override var stationName: String = ""
 
@@ -79,7 +93,7 @@ class Gen2RadioStation(
     }
 
     private fun setupAnnouncerFiles(folder: DocumentFile) {
-            announcerFiles = folder.listFiles().map { x -> x.uri }.toTypedArray()
+        announcerFiles = folder.listFiles().map { x -> x.uri }.toTypedArray()
     }
 
     private fun setupAdvertFiles(folder: DocumentFile) {
@@ -87,17 +101,19 @@ class Gen2RadioStation(
     }
 
     private fun setupDJFiles(folder: DocumentFile) {
-        djMorningFiles = (folder.listFiles().firstOrNull { x -> x.name == "Morning" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-        djEveningFiles = (folder.listFiles().firstOrNull { x -> x.name == "Evening" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-        djNightFiles = (folder.listFiles().firstOrNull { x -> x.name == "Night" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-        djOtherFiles = (folder.listFiles().firstOrNull { x -> x.name == "Other" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        val djFolders = folder.listFiles()
+        djMorningFiles = (djFolders.firstOrNull { x -> x.name == "Morning" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djEveningFiles = (djFolders.firstOrNull { x -> x.name == "Evening" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djNightFiles = (djFolders.firstOrNull { x -> x.name == "Night" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djOtherFiles = (djFolders.firstOrNull { x -> x.name == "Other" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
 
-        val weatherFolders =  folder.listFiles().firstOrNull { x -> x.name == "Weather" }
-        if (weatherFolders != null && weatherFolders.listFiles().isNotEmpty()) {
-            djWeatherFogFiles = (weatherFolders.listFiles().firstOrNull { x -> x.name == "Fog" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-            djWeatherRainFiles = (weatherFolders.listFiles().firstOrNull { x -> x.name == "Rain" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-            djWeatherSunFiles = (weatherFolders.listFiles().firstOrNull { x -> x.name == "Sun" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-            djWeatherStormFiles = (weatherFolders.listFiles().firstOrNull { x -> x.name == "Storm" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        val weatherFolder =  folder.listFiles().firstOrNull { x -> x.name == "Weather" }
+        val weatherFolders = weatherFolder?.listFiles()
+        if (weatherFolder != null && weatherFolders?.isNotEmpty() == true) {
+            djWeatherFogFiles = (weatherFolders.firstOrNull { x -> x.name == "Fog" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherRainFiles = (weatherFolders.firstOrNull { x -> x.name == "Rain" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherSunFiles = (weatherFolders.firstOrNull { x -> x.name == "Sun" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherStormFiles = (weatherFolders.firstOrNull { x -> x.name == "Storm" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
         }
 
     }
@@ -414,10 +430,11 @@ class Gen2RadioStation(
     }
 
     private inner class Song(songFolderDoc: DocumentFile?) {
-        val mainSongUri: Uri? = (songFolderDoc?.listFiles() ?: emptyArray()).find { x -> x.name?.contains("(Intro") == false && x.name?.contains("(Outro") == false }?.uri
-        val mainIntroUri: Uri? = (songFolderDoc?.listFiles() ?: emptyArray()).find { x -> x.name?.contains("(Intro)") == true}?.uri
-        val mainOutroUri: Uri? = (songFolderDoc?.listFiles() ?: emptyArray()).find { x -> x.name?.contains("(Outro)") == true}?.uri
-        val djIntroUris: Array<Uri> = (songFolderDoc?.listFiles() ?: emptyArray()).filter { x -> x.name?.contains("(Intro DJ") == true }.map { x -> x.uri }.toTypedArray()
-        val djOutroUris: Array<Uri> = (songFolderDoc?.listFiles() ?: emptyArray()).filter { x -> x.name?.contains("(Outro DJ") == true }.map { x -> x.uri }.toTypedArray()
+        val songFiles: Array<DocumentFile> = songFolderDoc?.listFiles() ?: emptyArray()
+        val mainSongUri: Uri? = songFiles.find { x -> x.name?.contains("(Intro") == false && x.name?.contains("(Outro") == false }?.uri
+        val mainIntroUri: Uri? = songFiles.find { x -> x.name?.contains("(Intro)") == true}?.uri
+        val mainOutroUri: Uri? = songFiles.find { x -> x.name?.contains("(Outro)") == true}?.uri
+        val djIntroUris: Array<Uri> = songFiles.filter { x -> x.name?.contains("(Intro DJ") == true }.map { x -> x.uri }.toTypedArray()
+        val djOutroUris: Array<Uri> = songFiles.filter { x -> x.name?.contains("(Outro DJ") == true }.map { x -> x.uri }.toTypedArray()
     }
 }

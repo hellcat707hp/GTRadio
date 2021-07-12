@@ -94,11 +94,7 @@ class GTRadioNotificationManager(
             }
 
             override fun getCurrentLargeIcon(player: Player, callback: PlayerNotificationManager.BitmapCallback): Bitmap? {
-                return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, controller.metadata.description.iconUri!!))
-                } else {
-                    MediaStore.Images.Media.getBitmap(context.contentResolver, controller.metadata.description.iconUri!!)
-                }
+                return controller.metadata.description.iconBitmap
             }
 
             override fun getCurrentSubText(player: Player): CharSequence {

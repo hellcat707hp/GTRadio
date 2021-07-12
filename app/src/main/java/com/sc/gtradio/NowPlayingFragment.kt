@@ -73,7 +73,7 @@ class NowPlayingFragment : Fragment() {
         // Only update media if the item exists
         if (mediaMetadata.description.mediaId?.isNotBlank() == true) {
             binding.stationTitle.text = mediaMetadata.description.title
-            binding.albumArt.setImageURI(mediaMetadata.description.iconUri)
+            binding.albumArt.setImageBitmap(mediaMetadata.description.iconBitmap)
         } else {
             binding.stationTitle.text = getString(R.string.nothing_playing)
         }

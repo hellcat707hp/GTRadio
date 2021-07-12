@@ -6,6 +6,7 @@ import android.support.v4.media.MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.documentfile.provider.DocumentFile
+import com.sc.gtradio.common.FileUtils
 import org.json.JSONObject
 import java.io.*
 
@@ -25,15 +26,16 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
 
     private fun getMediaItem(folderDoc: DocumentFile, groupName: String): MediaBrowserCompat.MediaItem {
         val logoUri = folderDoc.listFiles().find { x -> x.isFile && x.name?.contains("logo") == true }?.uri
+        val logoBitmap = FileUtils.getBitmapFromUri(context.contentResolver, logoUri)
 
         val metadata = MediaMetadataCompat.Builder()
             .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, folderDoc.uri.toString())
             .putString(MediaMetadataCompat.METADATA_KEY_TITLE, groupName)
             .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, logoUri.toString())
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, logoBitmap)
             .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, groupName)
             .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
-            .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, logoUri.toString())
+            .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, logoBitmap)
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "")
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, "")
             .build()
@@ -87,16 +89,17 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
 
             val stationName = subDir.name ?: ""
             val logoUri = subDir.listFiles().find { x -> x.isFile && x.name?.contains("logo") == true }?.uri
+            val logoBitmap = FileUtils.getBitmapFromUri(context.contentResolver, logoUri)
 
             if (stationName.isNotBlank()) {
                 val metadata = MediaMetadataCompat.Builder()
                     .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, subDir.uri.toString())
                     .putString(MediaMetadataCompat.METADATA_KEY_TITLE, stationName)
                     .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, -1L)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, logoUri.toString())
+                    .putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, logoBitmap)
                     .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, stationName)
                     .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, "")
-                    .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, logoUri.toString())
+                    .putBitmap(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON, logoBitmap)
                     .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, "")
                     .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, "")
                     .build()

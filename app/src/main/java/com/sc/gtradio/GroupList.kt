@@ -95,7 +95,7 @@ class GroupList : Fragment() {
     private fun updateLibrarySelectedComponents() {
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(this.requireActivity().applicationContext)
         val radioUri = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
-        if (radioUri.isNullOrEmpty()) {
+        if (radioUri.isNullOrEmpty() || activity?.contentResolver?.persistedUriPermissions?.any { x -> x.uri == Uri.parse(radioUri) && x.isReadPermission } != true) {
             //User has no library selected, allow them to select something
             binding.buttonSelect.visibility = View.VISIBLE
             binding.textviewNofolder.visibility = View.VISIBLE
@@ -136,7 +136,7 @@ class StationGroupMediaItemListAdapter(
         if (fullRefresh) {
             holder.item = mediaItem
             holder.titleView.text = mediaItem.description.title
-            holder.groupArt.setImageURI(mediaItem.description.iconUri)
+            holder.groupArt.setImageBitmap(mediaItem.description.iconBitmap)
         }
     }
 

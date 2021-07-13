@@ -12,6 +12,7 @@ import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
+import com.sc.gtradio.common.FileUtils.listSimpleFiles
 import com.sc.gtradio.media.GTRadioPlayer
 import java.util.*
 
@@ -430,11 +431,12 @@ class Gen2RadioStation(
     }
 
     private inner class Song(songFolderDoc: DocumentFile?) {
-        val songFiles: Array<DocumentFile> = songFolderDoc?.listFiles() ?: emptyArray()
-        val mainSongUri: Uri? = songFiles.find { x -> x.name?.contains("(Intro") == false && x.name?.contains("(Outro") == false }?.uri
-        val mainIntroUri: Uri? = songFiles.find { x -> x.name?.contains("(Intro)") == true}?.uri
-        val mainOutroUri: Uri? = songFiles.find { x -> x.name?.contains("(Outro)") == true}?.uri
-        val djIntroUris: Array<Uri> = songFiles.filter { x -> x.name?.contains("(Intro DJ") == true }.map { x -> x.uri }.toTypedArray()
-        val djOutroUris: Array<Uri> = songFiles.filter { x -> x.name?.contains("(Outro DJ") == true }.map { x -> x.uri }.toTypedArray()
+        val songFiles = songFolderDoc?.listSimpleFiles(context.applicationContext)
+
+        val mainSongUri: Uri? = (songFiles ?: emptyArray()).find { x -> !x.name?.contains("(Intro") && !x.name?.contains("(Outro") }?.uri
+        val mainIntroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name?.contains("(Intro)") }?.uri
+        val mainOutroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name?.contains("(Outro)") }?.uri
+        val djIntroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name?.contains("(Intro DJ") }.map { x -> x.uri }.toTypedArray()
+        val djOutroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name?.contains("(Outro DJ") }.map { x -> x.uri }.toTypedArray()
     }
 }

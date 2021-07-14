@@ -5,6 +5,7 @@
     <string name="radio_folders_uri_key">radio_folders_uri</string>
     <string name="ads_enabled_preference_key">ads_enabled</string>
     <string name="weather_chatter_enabled_preference_key">weather_chatter_enabled</string>
+    <string name="news_reports_preference_key">news_reports_enabled</string>
 
     <string name="notification_channel">Now Playing</string>
     <string name="notification_channel_description">Shows what station is currently playing in GTRadio</string>

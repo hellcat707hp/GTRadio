@@ -19,10 +19,7 @@ import androidx.documentfile.provider.DocumentFile
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ui.PlayerNotificationManager
-import com.sc.gtradio.media.stations.Gen1RadioStation
-import com.sc.gtradio.media.stations.Gen2RadioStation
-import com.sc.gtradio.media.stations.RadioStation
-import com.sc.gtradio.media.stations.StationGroup
+import com.sc.gtradio.media.stations.*
 import java.util.ArrayList
 
 open class GTRadioMusicService : MediaBrowserServiceCompat() {
@@ -53,6 +50,13 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                         if (this@GTRadioMusicService.activeStation != null) {
                             val newValue = prefs.getBoolean(key, false)
                             this@GTRadioMusicService.activeStation?.weatherChatterEnabled = newValue
+                        }
+                    }
+                    resources.getString(R.string.news_reports_preference_key) -> {
+                        //Update news reports enabled
+                        if (this@GTRadioMusicService.activeStation != null) {
+                            val newValue = prefs.getBoolean(key, false)
+                            this@GTRadioMusicService.activeStation?.newsReportsEnabled = newValue
                         }
                     }
                 }
@@ -396,17 +400,29 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(applicationContext)
         val adsEnabled = sharedPref?.getBoolean(getString(R.string.ads_enabled_preference_key), false) ?: false
         val weatherChatterEnabled = sharedPref?.getBoolean(getString(R.string.weather_chatter_enabled_preference_key), false) ?: false
+        val newsReportsEnabled  = sharedPref?.getBoolean(getString(R.string.news_reports_preference_key), false) ?: false
 
         val stationMedia = group.stationList.find { x -> x.mediaId == mediaId }!!
-        val stationDoc = group.folderDoc.listFiles().find { x -> x.isDirectory && x.uri.toString() == stationMedia.mediaId } ?: return null
+        val folderContents = group.folderDoc.listFiles()
+        val stationDoc = folderContents.find { x -> x.isDirectory && x.uri.toString() == stationMedia.mediaId } ?: return null
 
-        if (group.generation == 1) {
-            return Gen1RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc,  radioPlayer, applicationContext)
-        } else if (group.generation == 2) {
-            val advertsDoc = group.folderDoc.listFiles().find { x -> x.name?.contains("Adverts") == true } ?: return null
-            return Gen2RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc, advertsDoc, radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
-        } else {
-            return null
+        when (group.generation) {
+            1 -> {
+                return Gen1RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc,  radioPlayer, applicationContext)
+            }
+            2 -> {
+                val advertsDoc = folderContents.find { x -> x.name?.contains("Adverts") == true } ?: return null
+                return Gen2RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc, advertsDoc, radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
+            }
+            3 -> {
+                val advertsDoc = folderContents.find { x -> x.name?.contains("Adverts") == true } ?: return null
+                val newsDoc = folderContents.find { x -> x.name?.contains("News") == true } ?: return null
+                val weatherDoc = folderContents.find { x -> x.name?.contains("Weather") == true } ?: return null
+                return Gen3RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc, advertsDoc, newsDoc, weatherDoc, radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled, newsReportsEnabled)
+            }
+            else -> {
+                return null
+            }
         }
     }
 

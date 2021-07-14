@@ -56,17 +56,19 @@ object FileUtils {
             c = resolver.query(
                 childrenUri, arrayOf(
                     DocumentsContract.Document.COLUMN_DOCUMENT_ID,
-                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME,
+                    DocumentsContract.Document.COLUMN_MIME_TYPE
                 ), null, null, null
             )
             while (c!!.moveToNext()) {
                 val documentId = c.getString(0)
                 val name = c.getString(1)
+                val mime = c.getString(2)
                 val documentUri = DocumentsContract.buildDocumentUriUsingTree(
                     this.uri,
                     documentId
                 )
-                results.add(SimpleFileInfo(documentUri, name, documentId))
+                results.add(SimpleFileInfo(documentUri, name, documentId, mime == DocumentsContract.Document.MIME_TYPE_DIR ))
             }
         }  finally {
             closeQuietly(c)
@@ -80,4 +82,4 @@ object FileUtils {
 /**
  * A class housing core and simplified file properties including uri, name, and document id
  */
-class SimpleFileInfo(val uri: Uri, val name: String, val id: String)
+class SimpleFileInfo(val uri: Uri, val name: String, val id: String, val isDirectory: Boolean)

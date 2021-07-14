@@ -5,7 +5,9 @@ enum class RadioSegmentType(val value: Int) {
     Commercial(1),
     Announcer(2),
     DJChatter(3),
-    Song(4);
+    Song(4),
+    NewsReport(5),
+    WeatherReport(6);
 
     companion object {
         fun fromInt(value: Int) = values().first { it.value == value }

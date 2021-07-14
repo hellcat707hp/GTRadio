@@ -39,6 +39,7 @@ class Gen1RadioStation(
     //These fields are irrelevant to these stations
     override var adsEnabled: Boolean = true
     override var weatherChatterEnabled: Boolean = false
+    override var newsReportsEnabled: Boolean = true
 
     private var _playing = false
     private var radioFileUri: Uri?

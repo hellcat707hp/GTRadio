@@ -27,6 +27,9 @@ class Gen2RadioStation(
     override var adsEnabled: Boolean,
     private var _weatherChatterEnabled: Boolean) : RadioStation {
 
+    //News reports are not a feature of Gen2, so mark them disabled
+    override var newsReportsEnabled: Boolean = false
+
     override var weatherChatterEnabled: Boolean
         get() = _weatherChatterEnabled
         set(enabled) {
@@ -141,26 +144,25 @@ class Gen2RadioStation(
     }
 
     private fun randomizeDJFiles() {
-        djMorningFiles.shuffle()
-        djEveningFiles.shuffle()
-        djNightFiles.shuffle()
-        djOtherFiles.shuffle()
-
         //Include the relevant time-of-day DJ chatter based on current time
         //Note: There is no afternoon slot currently based on the anticipated user dataset
         val now = Calendar.getInstance()
         val currentHour = now.get(Calendar.HOUR_OF_DAY)
         var arrToConcat: Array<Uri> = emptyArray()
-        if (currentHour in 3..12) {
+        if (currentHour in 3..11) {
             //Morning (3am-noon) (03:00 to 12:00)
+            djMorningFiles.shuffle()
             arrToConcat = djMorningFiles
         } else if(currentHour in 17..22) {
             //Evening (5pm-11pm) (17:00-23:00)
+            djEveningFiles.shuffle()
             arrToConcat = djEveningFiles
         } else if(currentHour < 3 || currentHour >= 23) {
             //Night (11pm-3am) (23:00-03:00)
+            djNightFiles.shuffle()
             arrToConcat = djNightFiles
         }
+        djOtherFiles.shuffle()
         currentDJFiles = djOtherFiles.plus(arrToConcat)
 
         if (weatherChatterEnabled) {
@@ -231,7 +233,7 @@ class Gen2RadioStation(
             when (lastSegment) {
                 RadioSegmentType.None -> {
                     //We can do anything here
-                    val nextThing = rng.nextInt(3)
+                    val nextThing = rng.nextInt(5)
                     lastSegment = RadioSegmentType.fromInt(nextThing + 1)
                     playNext()
                 }
@@ -239,14 +241,9 @@ class Gen2RadioStation(
                     val songOrAnnouncer = rng.nextInt(11)
                     if (songOrAnnouncer < 6 || announcerFiles.isEmpty()) {
                         //Song
-                        songsSinceLastBreak += 1
-                        lastSegment = RadioSegmentType.Song
-                        val nextSong = getNextSongFolder()
-                        playSong(nextSong, true)
+                        playNextSong(true)
                     } else {
-                        val nextAnn = getNextAnnouncerFile()
-                        lastSegment = RadioSegmentType.Announcer
-                        playFile(nextAnn)
+                        playNextAnnouncerSpot()
                     }
                 }
                 RadioSegmentType.Announcer -> {
@@ -254,40 +251,26 @@ class Gen2RadioStation(
                     val songOrDj = rng.nextInt(11)
                     if (songOrDj < 3 || currentDJFiles.isEmpty()) {
                         //Song
-                        songsSinceLastBreak += 1
-                        lastSegment = RadioSegmentType.Song
-                        val nextSong = getNextSongFolder()
-                        playSong(nextSong, true)
+                        playNextSong(true)
                     } else {
-                        lastSegment = RadioSegmentType.DJChatter
-                        val nextDj = getNextDjFile()
-                        playFile(nextDj)
+                        playNextDjChatter()
                     }
                 }
                 RadioSegmentType.DJChatter -> {
                     //Commercial or song with/without intro
                     if (songsSinceLastBreak == 0) {
                         //Need to play a song here
-                        songsSinceLastBreak += 1
-                        lastSegment = RadioSegmentType.Song
-                        val nextSong = getNextSongFolder()
-                        playSong(nextSong)
+                        playNextSong()
                     } else {
                         //We can either do a song or a commercial
                         val numberOfSongsBeforeBreak =
                             rng.nextInt(3) + 3 //gives us a number from 3-6
                         if (adsEnabled && numberOfSongsBeforeBreak <= songsSinceLastBreak) {
                             //Time for a commercial
-                            lastSegment = RadioSegmentType.Commercial
-                            songsSinceLastBreak = 0
-                            val nextAd = getNextAdvertFile()
-                            playFile(nextAd)
+                            playNextAdvert()
                         } else {
                             //Play another song
-                            songsSinceLastBreak += 1
-                            lastSegment = RadioSegmentType.Song
-                            val nextSong = getNextSongFolder()
-                            playSong(nextSong)
+                            playNextSong()
                         }
                     }
 
@@ -298,15 +281,12 @@ class Gen2RadioStation(
                         rng.nextInt(3) + 3 //gives us a number from 3-6
                     if (adsEnabled && numberOfSongsBeforeBreak <= songsSinceLastBreak) {
                         //Time for a commercial
-                        lastSegment = RadioSegmentType.Commercial
-                        songsSinceLastBreak = 0
-                        val nextAd = getNextAdvertFile()
-                        playFile(nextAd)
+                        playNextAdvert()
                     } else {
                         val nextThing = if (currentDJFiles.isEmpty() && announcerFiles.isEmpty()) {
                             //No DJ Files or Announcer files, so set our next item to a song
                             0
-                        } else if (currentDJFiles.isNotEmpty()) {
+                        } else if (currentDJFiles.isEmpty()) {
                             //No DJ files so we have to pick between announcer and song
                             rng.nextInt(2)
                         } else if (announcerFiles.isEmpty()) {
@@ -319,65 +299,104 @@ class Gen2RadioStation(
                         when (nextThing) {
                             0 -> {
                                 //Song again
-                                songsSinceLastBreak += 1
-                                lastSegment = RadioSegmentType.Song
-                                val nextSong = getNextSongFolder()
-                                playSong(nextSong)
+                                playNextSong()
                             }
                             1 -> {
                                 //Announcer
-                                lastSegment = RadioSegmentType.Announcer
-                                val nextAnn = getNextAnnouncerFile()
-                                playFile(nextAnn)
+                                playNextAnnouncerSpot()
                             }
                             else -> {
                                 //DJ
-                                lastSegment = RadioSegmentType.DJChatter
-                                val nextDj = getNextDjFile()
-                                playFile(nextDj)
+                                playNextDjChatter()
                             }
                         }
                     }
+                }
+                else -> {
+                    //Bad state, try something new
+                    val nextThing = rng.nextInt(5)
+                    lastSegment = RadioSegmentType.fromInt(nextThing + 1)
+                    playNext()
                 }
             }
         }
     }
 
-    private fun playSong(song: Song, requireDjIntro: Boolean = false, requireDjOutro: Boolean = false)
+    private fun playNextAnnouncerSpot() {
+        lastSegment = RadioSegmentType.Announcer
+        if (announcerFiles.isNotEmpty()) {
+            val nextAnn = getNextAnnouncerFile()
+            playFile(nextAnn)
+        } else {
+            playNext()
+        }
+    }
+
+    private fun playNextDjChatter() {
+        lastSegment = RadioSegmentType.DJChatter
+        if (currentDJFiles.isNotEmpty()) {
+            val nextDj = getNextDjFile()
+            playFile(nextDj)
+        } else {
+            playNext()
+        }
+    }
+
+    private fun playNextAdvert() {
+        lastSegment = RadioSegmentType.Commercial
+        songsSinceLastBreak = 0
+        if (adsEnabled && advertFiles.isNotEmpty()) {
+            val nextAd = getNextAdvertFile()
+            playFile(nextAd)
+        } else {
+            playNext()
+        }
+    }
+
+    private fun playNextSong(requireDjIntro: Boolean = false, requireDjOutro: Boolean = false) {
+        songsSinceLastBreak += 1
+        lastSegment = RadioSegmentType.Song
+        if (songs.isNotEmpty()) {
+            val nextSong = getNextSongFolder()
+            playSong(nextSong, requireDjIntro, requireDjOutro)
+        } else {
+            playNext()
+        }
+    }
+
+    private fun playSong(song: Song, requireDjIntro: Boolean, requireDjOutro: Boolean)
     {
         if (song.mainIntroUri == null || song.mainSongUri == null || song.mainOutroUri == null) {
             return
         }
 
-        val introToUse: Uri
-        if (requireDjIntro && song.djIntroUris.isNotEmpty()) {
+        val introToUse = if (requireDjIntro && song.djIntroUris.isNotEmpty()) {
             //Use a random dj intro
             val introIndex = rng.nextInt(song.djIntroUris.size)
-            introToUse = song.djIntroUris[introIndex]
+            song.djIntroUris[introIndex]
         } else {
             val djOrStandard = rng.nextInt(11)
             if (djOrStandard < 6 && song.djIntroUris.isNotEmpty()) {
                 //Use a DJ intro
                 val introIndex = rng.nextInt(song.djIntroUris.size)
-                introToUse = song.djIntroUris[introIndex]
+                song.djIntroUris[introIndex]
             } else {
-                introToUse = song.mainIntroUri
+                song.mainIntroUri
             }
         }
 
-        val outroToUse: Uri
-        if (requireDjOutro && song.djOutroUris.isNotEmpty()) {
+        val outroToUse = if (requireDjOutro && song.djOutroUris.isNotEmpty()) {
             //Use a random dj outro
             val outroIndex = rng.nextInt(song.djOutroUris.size)
-            outroToUse = song.djOutroUris[outroIndex]
+            song.djOutroUris[outroIndex]
         } else {
             val djOrStandard = rng.nextInt(11)
             if (djOrStandard < 6 && song.djOutroUris.isNotEmpty()) {
                 //Use a DJ outro
                 val outroIndex = rng.nextInt(song.djOutroUris.size)
-                outroToUse = song.djOutroUris[outroIndex]
+                song.djOutroUris[outroIndex]
             } else {
-                outroToUse = song.mainOutroUri
+                song.mainOutroUri
             }
         }
 
@@ -433,10 +452,10 @@ class Gen2RadioStation(
     private inner class Song(songFolderDoc: DocumentFile?) {
         val songFiles = songFolderDoc?.listSimpleFiles(context.applicationContext)
 
-        val mainSongUri: Uri? = (songFiles ?: emptyArray()).find { x -> !x.name?.contains("(Intro") && !x.name?.contains("(Outro") }?.uri
-        val mainIntroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name?.contains("(Intro)") }?.uri
-        val mainOutroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name?.contains("(Outro)") }?.uri
-        val djIntroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name?.contains("(Intro DJ") }.map { x -> x.uri }.toTypedArray()
-        val djOutroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name?.contains("(Outro DJ") }.map { x -> x.uri }.toTypedArray()
+        val mainSongUri: Uri? = (songFiles ?: emptyArray()).find { x -> !x.name.contains("(Intro") && !x.name.contains("(Outro") }?.uri
+        val mainIntroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name.contains("(Intro)") }?.uri
+        val mainOutroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name.contains("(Outro)") }?.uri
+        val djIntroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name.contains("(Intro DJ") }.map { x -> x.uri }.toTypedArray()
+        val djOutroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name.contains("(Outro DJ") }.map { x -> x.uri }.toTypedArray()
     }
 }

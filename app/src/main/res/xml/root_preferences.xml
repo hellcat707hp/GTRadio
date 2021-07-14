@@ -14,6 +14,7 @@
         <SwitchPreference
             android:defaultValue="true"
             android:key="@string/ads_enabled_preference_key"
+            android:summary="@string/ads_enabled_summary"
             android:title="@string/ads_enabled_title" />
 
         <SwitchPreference
@@ -21,6 +22,12 @@
             android:key="@string/weather_chatter_enabled_preference_key"
             android:summary="@string/weather_chatter_summary"
             android:title="@string/weather_chatter_enabled_title" />
+
+        <SwitchPreference
+            android:defaultValue="true"
+            android:key="@string/news_reports_preference_key"
+            android:summary="@string/news_reports_summary"
+            android:title="@string/news_reports_enabled_title" />
     </PreferenceCategory>
 
 </PreferenceScreen>

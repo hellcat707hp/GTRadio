@@ -13,6 +13,7 @@ interface RadioStation {
     var stationName: String
     var adsEnabled: Boolean
     var weatherChatterEnabled: Boolean
+    var newsReportsEnabled: Boolean
 
     fun play()
     fun stop()

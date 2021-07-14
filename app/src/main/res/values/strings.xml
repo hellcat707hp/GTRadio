@@ -12,6 +12,7 @@
     <string name="radio_folders_uri_key">radio_folders_uri</string>
     <string name="ads_enabled_preference_key">ads_enabled</string>
     <string name="weather_chatter_enabled_preference_key">weather_chatter_enabled</string>
+    <string name="news_reports_preference_key">news_reports_enabled</string>
 
     <!-- Activity Titles-->
     <string name="title_activity_settings">Settings</string>
@@ -22,9 +23,16 @@
     <!-- Messages Preferences -->
     <string name="music_path_title">Path to Library</string>
     <string name="playback_header">Playback</string>
+
     <string name="ads_enabled_title">Play Ads</string>
-    <string name="weather_chatter_enabled_title">Play Weather-Specific DJ Chatter</string>
-    <string name="weather_chatter_summary">Note: The weather-specific DJ chatter does not currently check active weather conditions.</string>
+    <string name="ads_enabled_summary">Note: This setting only affects gen 2 and 3 stations.</string>
+
+    <string name="weather_chatter_enabled_title">Play Weather-Specific DJ Chatter and Weather Reports</string>
+    <string name="weather_chatter_summary">Note: The weather-specific DJ chatter and weather reports do not currently check active weather conditions.</string>
+
+    <string name="news_reports_enabled_title">Play News Reports</string>
+    <string name="news_reports_summary">Note: This setting only affects gen 3 stations.</string>
+
     <string name="nothing_playing">Nothing Playing</string>
 
 </resources>

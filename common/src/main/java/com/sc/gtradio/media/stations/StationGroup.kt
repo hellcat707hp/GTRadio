@@ -84,8 +84,10 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
 
         val subDirs = folderDoc.listFiles().filter { x -> x.isDirectory }
         for (subDir in subDirs) {
-            //Skip the Adverts folder since its not a standalone station
-            if (generation == 2 && subDir.uri.lastPathSegment?.contains("Adverts") == true) { continue }
+            //Skip the Adverts, News, and Weather folders since they're not standalone stations
+            if (generation in 2..3 && subDir.uri.lastPathSegment?.contains("Adverts") == true) { continue }
+            if (generation == 3 && subDir.uri.lastPathSegment?.contains("News") == true) { continue }
+            if (generation == 3 && subDir.uri.lastPathSegment?.contains("Weather") == true) { continue }
 
             val stationName = subDir.name ?: ""
             val logoUri = subDir.listFiles().find { x -> x.isFile && x.name?.contains("logo") == true }?.uri

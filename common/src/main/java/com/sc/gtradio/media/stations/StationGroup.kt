@@ -80,8 +80,8 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
         }
     }
 
-    private fun getStationsList(folderDoc: DocumentFile): java.util.ArrayList<MediaBrowserCompat.MediaItem> {
-        val list = java.util.ArrayList<MediaBrowserCompat.MediaItem>()
+    private fun getStationsList(folderDoc: DocumentFile): ArrayList<MediaBrowserCompat.MediaItem> {
+        val list = ArrayList<MediaBrowserCompat.MediaItem>()
 
         val subDirs = folderDoc.listFiles().filter { x -> x.isDirectory }
         for (subDir in subDirs) {
@@ -110,6 +110,7 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
                 list.add(item)
             }
         }
+        list.sortBy { x -> x.description.title.toString() }
         return list
     }
 

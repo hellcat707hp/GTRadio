@@ -333,6 +333,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         for (subDir in subDirs) {
             list.add(StationGroup(subDir, applicationContext))
         }
+        list.sortBy { x -> x.groupName }
         return list
     }
 

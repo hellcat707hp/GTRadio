@@ -220,6 +220,7 @@ class Gen2RadioStation(
         _playing = true
         player.radioPlaybackState = PlaybackStateCompat.STATE_PLAYING
         player.repeatMode = Player.REPEAT_MODE_OFF
+        player.playWhenReady = false
         playNext()
     }
 

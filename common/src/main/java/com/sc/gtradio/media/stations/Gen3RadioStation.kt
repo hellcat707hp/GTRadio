@@ -46,13 +46,23 @@ class Gen3RadioStation(
 
     override var stationName: String = ""
 
+    //Ad files
     private var advertFiles: Array<Uri> = emptyArray()
+    private var advertIterator: Iterator<Uri>? = null
+
+    //News report files
     private var newsFiles: Array<Uri> = emptyArray()
+    private var newsIterator: Iterator<Uri>? = null
+
     //Currently these weather files are just all weather files, as we have no way to determine device weather
     private var weatherFiles: Array<Uri> = emptyArray()
+    private var weatherIterator: Iterator<Uri>? = null
 
+    //Announcer files
     private var announcerFiles:  ArrayList<Uri> = ArrayList()
+    private var announcerIterator: Iterator<Uri>? = null
 
+    //DJ File Collections
     private var djMorningFiles:  ArrayList<Uri> = ArrayList()
     private var djAfternoonFiles:  ArrayList<Uri> = ArrayList()
     private var djEveningFiles:  ArrayList<Uri> = ArrayList()
@@ -63,100 +73,109 @@ class Gen3RadioStation(
     private var djToNewsFiles: ArrayList<Uri> = ArrayList()
     private var djToWeatherFiles: ArrayList<Uri> = ArrayList()
     private var currentDJFiles: Array<Uri> = emptyArray()
-
-    //These generic intros and outros really only exist for user-custom stations
-    private var genericSongIntros: ArrayList<Uri> = ArrayList()
-    private var genericSongOutros: ArrayList<Uri> = ArrayList()
-
-    private var songs: Array<Song> = emptyArray()
-    private var talkShows: Array<Song> = emptyArray()
-    private var isTalkRadio: Boolean = false
-
-    private var advertIterator: Iterator<Uri>? = null
-    private var newsIterator: Iterator<Uri>? = null
-    private var weatherIterator: Iterator<Uri>? = null
-    private var announcerIterator: Iterator<Uri>? = null
     private var djMainIterator: Iterator<Uri>? = null
     private var djSoloIterator: Iterator<Uri>? = null
     private var djToAdIterator: Iterator<Uri>? = null
     private var djToNewsIterator: Iterator<Uri>? = null
     private var djToWeatherIterator: Iterator<Uri>? = null
 
+    //These generic intros and outros really only exist for user-custom stations
+    private var genericSongIntros: ArrayList<Uri> = ArrayList()
+    private var genericSongOutros: ArrayList<Uri> = ArrayList()
     private var genericSongIntrosIterator: Iterator<Uri>? = null
     private var genericSongOutrosIterator: Iterator<Uri>? = null
 
+    //Primary content collections (songs or talk show episodes)
+    private var songs: Array<Song> = emptyArray()
+    private var talkShows: Array<Song> = emptyArray()
     private var songIterator: Iterator<Song>? = null
     private var talkShowIterator: Iterator<Song>? = null
+    private var isTalkRadio: Boolean = false
 
+    //Status management properties
     private var _playing = false
     private var lastSegment = RadioSegmentType.None
     private var songsSinceLastBreak = 0
     private var activeListener: Player.Listener? = null
     private val rng = Random()
 
+    /** The Gen1 station powering this station in the event that this is a single-looping-file station */
+    private val gen1Station: Gen1RadioStation?
+
     init {
         val subFiles = baseStationFolderDoc.listSimpleFiles(context)
 
-        for (file in subFiles) {
-            if (file.isDirectory) {
-                isTalkRadio = isTalkRadio || file.name.contains("Talk Shows")
-                continue
-            }
-
-            when {
-                file.name.startsWith("GENERAL_") -> {
-                    djGeneralFiles.add(file.uri)
-                }
-                file.name.startsWith("SOLO_") -> {
-                    djSoloFiles.add(file.uri)
-                }
-                file.name.startsWith("MORNING_") -> {
-                    djMorningFiles.add(file.uri)
-                }
-                file.name.startsWith("AFTERNOON_") -> {
-                    djAfternoonFiles.add(file.uri)
-                }
-                file.name.startsWith("EVENING_") -> {
-                    djEveningFiles.add(file.uri)
-                }
-                file.name.startsWith("NIGHT_") -> {
-                    djNightFiles.add(file.uri)
-                }
-                file.name.startsWith("ID_") -> {
-                    announcerFiles.add(file.uri)
-                }
-                file.name.startsWith("TO_AD_") -> {
-                    djToAdFiles.add(file.uri)
-                }
-                file.name.startsWith("TO_NEWS_") -> {
-                    djToNewsFiles.add(file.uri)
-                }
-                file.name.startsWith("TO_WEATHER_") -> {
-                    djToWeatherFiles.add(file.uri)
-                }
-                file.name.startsWith("MORNING_") -> {
-                    djMorningFiles.add(file.uri)
-                }
-                file.name.startsWith("INTRO_") -> {
-                    genericSongIntros.add(file.uri)
-                }
-                file.name.startsWith("OUTRO_") -> {
-                    genericSongOutros.add(file.uri)
-                }
-            }
-        }
-
-        setupAdvertFiles(advertsFolderDoc)
-        setupNewsFiles(newsFolderDoc)
-        setupWeatherFiles(weatherFolderDoc)
-        if (!isTalkRadio) {
-            val songFolder = baseStationFolderDoc.findFile("Songs")
-            setupSongs(songFolder)
+        gen1Station = if (subFiles.size <= 2) {
+            //With just a single audio file (and maybe a logo), likely safe to assume this is a Gen1-style Gen3 station
+            //Not sure if theres a better way to do this, but I don't want to duplicate all of the Gen1 code in here
+            Gen1RadioStation(stationGroupId, mediaId, mediaItem, baseStationFolderDoc, player, context)
         } else {
-            val showFolder = baseStationFolderDoc.findFile("Talk Shows")
-            setupTalkShows(showFolder)
+            null
         }
-        randomizeAll()
+
+        if (gen1Station == null) {
+            //Don't bother setting things up if this is basically a Gen1 station
+            for (file in subFiles) {
+                if (file.isDirectory) {
+                    isTalkRadio = isTalkRadio || file.name.contains("Talk Shows")
+                    continue
+                }
+
+                when {
+                    file.name.startsWith("GENERAL_") -> {
+                        djGeneralFiles.add(file.uri)
+                    }
+                    file.name.startsWith("SOLO_") -> {
+                        djSoloFiles.add(file.uri)
+                    }
+                    file.name.startsWith("MORNING_") -> {
+                        djMorningFiles.add(file.uri)
+                    }
+                    file.name.startsWith("AFTERNOON_") -> {
+                        djAfternoonFiles.add(file.uri)
+                    }
+                    file.name.startsWith("EVENING_") -> {
+                        djEveningFiles.add(file.uri)
+                    }
+                    file.name.startsWith("NIGHT_") -> {
+                        djNightFiles.add(file.uri)
+                    }
+                    file.name.startsWith("ID_") -> {
+                        announcerFiles.add(file.uri)
+                    }
+                    file.name.startsWith("TO_AD_") -> {
+                        djToAdFiles.add(file.uri)
+                    }
+                    file.name.startsWith("TO_NEWS_") -> {
+                        djToNewsFiles.add(file.uri)
+                    }
+                    file.name.startsWith("TO_WEATHER_") -> {
+                        djToWeatherFiles.add(file.uri)
+                    }
+                    file.name.startsWith("MORNING_") -> {
+                        djMorningFiles.add(file.uri)
+                    }
+                    file.name.startsWith("INTRO_") -> {
+                        genericSongIntros.add(file.uri)
+                    }
+                    file.name.startsWith("OUTRO_") -> {
+                        genericSongOutros.add(file.uri)
+                    }
+                }
+            }
+
+            setupAdvertFiles(advertsFolderDoc)
+            setupNewsFiles(newsFolderDoc)
+            setupWeatherFiles(weatherFolderDoc)
+            if (!isTalkRadio) {
+                val songFolder = baseStationFolderDoc.findFile("Songs")
+                setupSongs(songFolder)
+            } else {
+                val showFolder = baseStationFolderDoc.findFile("Talk Shows")
+                setupTalkShows(showFolder)
+            }
+            randomizeAll()
+        }
     }
 
     private fun setupAdvertFiles(advertsFolderDoc: DocumentFile) {
@@ -389,15 +408,24 @@ class Gen3RadioStation(
 
 
     override fun stop() {
-        _playing = false
-        player.stop()
+        if (gen1Station == null) {
+            _playing = false
+            player.stop()
+        } else {
+            gen1Station.stop()
+        }
     }
 
     override fun play() {
-        _playing = true
-        player.radioPlaybackState = PlaybackStateCompat.STATE_PLAYING
-        player.repeatMode = Player.REPEAT_MODE_OFF
-        playNext()
+        if (gen1Station == null) {
+            _playing = true
+            player.radioPlaybackState = PlaybackStateCompat.STATE_PLAYING
+            player.repeatMode = Player.REPEAT_MODE_OFF
+            player.playWhenReady = false
+            playNext()
+        } else {
+            gen1Station.play()
+        }
     }
 
     private fun playNext() {

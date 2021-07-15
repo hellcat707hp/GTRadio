@@ -2,13 +2,14 @@ package com.sc.gtradio.media.stations
 
 import android.content.Context
 import android.icu.util.Calendar
-import android.net.Uri
 import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.documentfile.provider.DocumentFile
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.Timeline
+import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
@@ -21,7 +22,7 @@ class Gen1RadioStation(
     override val mediaItem: MediaBrowserCompat.MediaItem,
     baseStationDoc: DocumentFile,
     private val player: GTRadioPlayer,
-    private val context: Context) : RadioStation {
+    context: Context) : RadioStation {
 
     override val metadata: MediaMetadataCompat =
         MediaMetadataCompat.Builder()
@@ -42,15 +43,25 @@ class Gen1RadioStation(
     override var newsReportsEnabled: Boolean = true
 
     private var _playing = false
-    private var radioFileUri: Uri?
 
-    private var lastStoppedDurationMs: Long = 0L
+    //Properties used to calculate elapsed time and current location in the track
+    private var durationSec: Int = 0
+    private var lastStoppedDurationSec: Int = 0
     private var lastStoppedTime: Calendar? = null
+    private var activeListener: Player.Listener? = null
+
+    private val mediaSource: MediaSource?
 
     init {
         stationName = getStationName(baseStationDoc)
         val files = baseStationDoc.listFiles()
-        radioFileUri = files.firstOrNull { x -> x.name?.contains("logo") == false }?.uri
+        val radioFileUri = files.firstOrNull { x -> x.name?.contains("logo") == false }?.uri
+        mediaSource = if (radioFileUri != null) {
+            val media = MediaItem.fromUri(radioFileUri)
+            ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(media)
+        } else {
+            null
+        }
     }
 
     private fun getStationName(stationFolder: DocumentFile): String {
@@ -58,32 +69,61 @@ class Gen1RadioStation(
     }
 
     override fun stop() {
-        if (radioFileUri == null) {
+        if (mediaSource == null) {
             return
         }
 
         _playing = false
-        lastStoppedDurationMs = player.getCurrentTrackPosition()
+        lastStoppedDurationSec = (player.getCurrentTrackPosition() / 1000).toInt()
         lastStoppedTime = Calendar.getInstance()
         player.stop()
     }
 
     override fun play() {
-        if (radioFileUri == null) {
+        if (mediaSource == null) {
             return
         }
 
         _playing = true
         player.radioPlaybackState = PlaybackStateCompat.STATE_PLAYING
 
-        // Set the media item to be played.
-        val mediaItem = MediaItem.fromUri(radioFileUri!!)
-        val src = ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(mediaItem)
+        /* Have to listen to some timeline changes just to get track duration.
+         * MediaMetadataRetriever is dated and throws exceptions when using Uri, and using MetadataRetriever is also an async operation where
+         *      we can save time by just letting the player prepare the source like it has to anyway (instead of us making MetadataRetriever do it also).
+         *      Also note, the GTRadioPlayer.currentTrackDuration field only gets filled once the timeline is built which is async and not immediately following .prepare
+         */
+        if (durationSec == 0) {
+            activeListener = object : Player.Listener {
+                override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+                    if (reason == Player.TIMELINE_CHANGE_REASON_SOURCE_UPDATE) {
+                        if (durationSec != 0) {
+                            player.removeListener(activeListener!!)
+                            return
+                        }
+                        val stuff = timeline.getPeriod(0, Timeline.Period())
+                        if (stuff.durationMs > 0) {
+                            durationSec = (stuff.durationMs / 1000).toInt()
+                            player.removeListener(activeListener!!)
+                            seekAndPlayFile()
+                        }
+                    }
+                }
+            }
+            player.addListener(activeListener!!)
+        }
 
         // Prepare the player.
-        player.setMediaSource(src)
+        player.setMediaSource(mediaSource)
         player.playWhenReady = false
         player.prepare()
+        if (durationSec != 0) {
+            //Already know the duration so just play, otherwise we must wait for the duration to be calculated in the timeline
+            seekAndPlayFile()
+        }
+
+    }
+
+    private fun seekAndPlayFile() {
         player.seekTo(getSeekPosition())
         player.repeatMode = Player.REPEAT_MODE_ALL
         player.play()
@@ -91,8 +131,25 @@ class Gen1RadioStation(
 
     private fun getSeekPosition(): Long {
         val rng = Random()
-        //For now, pick a random number inside 10 minutes
-        return (rng.nextInt(61) * 10000).toLong()
+        if (lastStoppedTime == null) {
+            //Pick a random starting point
+            return (rng.nextInt(durationSec) * 1000).toLong()
+        } else {
+            //Calculate position
+            val now = Calendar.getInstance()
+            val elapsedTimeSec = ((now.timeInMillis - lastStoppedTime!!.timeInMillis) / 1000).toInt()
+            val divisions = (elapsedTimeSec.toFloat() / durationSec)
+            val multiplier = divisions - divisions.toInt()
+            val initialStartPositionSec = (durationSec * multiplier) + lastStoppedDurationSec
+            val finalPosition = if (initialStartPositionSec > durationSec) {
+                initialStartPositionSec - durationSec
+            } else {
+                initialStartPositionSec
+            }
+            return (finalPosition * 1000).toLong()
+        }
+
+
     }
 
 }

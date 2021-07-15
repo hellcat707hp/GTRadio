@@ -7,6 +7,7 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import androidx.documentfile.provider.DocumentFile
 import com.sc.gtradio.common.FileUtils
+import com.sc.gtradio.common.FileUtils.listSimpleFiles
 import org.json.JSONObject
 import java.io.*
 
@@ -25,7 +26,7 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
     }
 
     private fun getMediaItem(folderDoc: DocumentFile, groupName: String): MediaBrowserCompat.MediaItem {
-        val logoUri = folderDoc.listFiles().find { x -> x.isFile && x.name?.contains("logo") == true }?.uri
+        val logoUri = folderDoc.listSimpleFiles(context).find { x -> !x.isDirectory && x.name.contains("logo") }?.uri
         val logoBitmap = FileUtils.getBitmapFromUri(context.contentResolver, logoUri)
 
         val metadata = MediaMetadataCompat.Builder()
@@ -90,7 +91,7 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
             if (generation == 3 && subDir.uri.lastPathSegment?.contains("Weather") == true) { continue }
 
             val stationName = subDir.name ?: ""
-            val logoUri = subDir.listFiles().find { x -> x.isFile && x.name?.contains("logo") == true }?.uri
+            val logoUri = subDir.listSimpleFiles(context).find { x -> !x.isDirectory && x.name.contains("logo") }?.uri
             val logoBitmap = FileUtils.getBitmapFromUri(context.contentResolver, logoUri)
 
             if (stationName.isNotBlank()) {

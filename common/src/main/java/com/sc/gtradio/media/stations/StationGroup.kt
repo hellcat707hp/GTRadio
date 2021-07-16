@@ -26,7 +26,7 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
     }
 
     private fun getMediaItem(folderDoc: DocumentFile, groupName: String): MediaBrowserCompat.MediaItem {
-        val logoUri = folderDoc.listSimpleFiles(context).find { x -> !x.isDirectory && x.name.contains("logo") }?.uri
+        val logoUri = folderDoc.listSimpleFiles(context).find { x -> !x.isDirectory && x.name.uppercase().contains("LOGO") }?.uri
         val logoBitmap = FileUtils.getBitmapFromUri(context.contentResolver, logoUri)
 
         val metadata = MediaMetadataCompat.Builder()
@@ -86,12 +86,12 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
         val subDirs = folderDoc.listFiles().filter { x -> x.isDirectory }
         for (subDir in subDirs) {
             //Skip the Adverts, News, and Weather folders since they're not standalone stations
-            if (generation in 2..3 && subDir.uri.lastPathSegment?.contains("Adverts") == true) { continue }
-            if (generation == 3 && subDir.uri.lastPathSegment?.contains("News") == true) { continue }
-            if (generation == 3 && subDir.uri.lastPathSegment?.contains("Weather") == true) { continue }
+            if (generation in 2..3 && subDir.uri.lastPathSegment?.uppercase()?.contains("ADVERTS") == true) { continue }
+            if (generation == 3 && subDir.uri.lastPathSegment?.uppercase()?.contains("NEWS") == true) { continue }
+            if (generation == 3 && subDir.uri.lastPathSegment?.uppercase()?.contains("WEATHER") == true) { continue }
 
             val stationName = subDir.name ?: ""
-            val logoUri = subDir.listSimpleFiles(context).find { x -> !x.isDirectory && x.name.contains("logo") }?.uri
+            val logoUri = subDir.listSimpleFiles(context).find { x -> !x.isDirectory && x.name.uppercase().contains("LOGO") }?.uri
             val logoBitmap = FileUtils.getBitmapFromUri(context.contentResolver, logoUri)
 
             if (stationName.isNotBlank()) {

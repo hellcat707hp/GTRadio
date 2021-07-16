@@ -412,13 +412,13 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 return Gen1RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc,  radioPlayer, applicationContext)
             }
             2 -> {
-                val advertsDoc = folderContents.find { x -> x.name?.contains("Adverts") == true } ?: return null
+                val advertsDoc = folderContents.find { x -> x.name?.uppercase()?.contains("ADVERTS") == true } ?: return null
                 return Gen2RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc, advertsDoc, radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled)
             }
             3 -> {
-                val advertsDoc = folderContents.find { x -> x.name?.contains("Adverts") == true } ?: return null
-                val newsDoc = folderContents.find { x -> x.name?.contains("News") == true } ?: return null
-                val weatherDoc = folderContents.find { x -> x.name?.contains("Weather") == true } ?: return null
+                val advertsDoc = folderContents.find { x -> x.name?.uppercase()?.contains("ADVERTS") == true } ?: return null
+                val newsDoc = folderContents.find { x -> x.name?.uppercase()?.contains("NEWS") == true } ?: return null
+                val weatherDoc = folderContents.find { x -> x.name?.uppercase()?.contains("WEATHER") == true } ?: return null
                 return Gen3RadioStation(group.mediaItem.mediaId!!, stationMedia.mediaId!!, stationMedia, stationDoc, advertsDoc, newsDoc, weatherDoc, radioPlayer, applicationContext, adsEnabled, weatherChatterEnabled, newsReportsEnabled)
             }
             else -> {

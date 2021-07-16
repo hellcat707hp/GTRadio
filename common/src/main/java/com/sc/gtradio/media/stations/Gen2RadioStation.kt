@@ -81,10 +81,10 @@ class Gen2RadioStation(
         stationName = getStationName(baseStationFolderDoc)
         val subDirs = baseStationFolderDoc.listFiles().filter { x -> x.isDirectory }
         for (subDir in subDirs) {
-            when(subDir.name) {
-                "Announcer" -> { setupAnnouncerFiles(subDir) }
-                "DJ Chatter" -> { setupDJFiles(subDir) }
-                "Songs" -> { setupSongs(subDir) }
+            when(subDir.name?.uppercase()) {
+                "ANNOUNCER" -> { setupAnnouncerFiles(subDir) }
+                "DJ CHATTER" -> { setupDJFiles(subDir) }
+                "SONGS" -> { setupSongs(subDir) }
             }
         }
 
@@ -106,18 +106,18 @@ class Gen2RadioStation(
 
     private fun setupDJFiles(folder: DocumentFile) {
         val djFolders = folder.listFiles()
-        djMorningFiles = (djFolders.firstOrNull { x -> x.name == "Morning" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-        djEveningFiles = (djFolders.firstOrNull { x -> x.name == "Evening" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-        djNightFiles = (djFolders.firstOrNull { x -> x.name == "Night" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-        djOtherFiles = (djFolders.firstOrNull { x -> x.name == "Other" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djMorningFiles = (djFolders.firstOrNull { x -> x.name?.uppercase() == "MORNING" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djEveningFiles = (djFolders.firstOrNull { x -> x.name?.uppercase() == "EVENING" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djNightFiles = (djFolders.firstOrNull { x -> x.name?.uppercase() == "NIGHT" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+        djOtherFiles = (djFolders.firstOrNull { x -> x.name?.uppercase() == "OTHER" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
 
-        val weatherFolder =  folder.listFiles().firstOrNull { x -> x.name == "Weather" }
+        val weatherFolder =  folder.listFiles().firstOrNull { x -> x.name?.uppercase() == "WEATHER" }
         val weatherFolders = weatherFolder?.listFiles()
         if (weatherFolder != null && weatherFolders?.isNotEmpty() == true) {
-            djWeatherFogFiles = (weatherFolders.firstOrNull { x -> x.name == "Fog" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-            djWeatherRainFiles = (weatherFolders.firstOrNull { x -> x.name == "Rain" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-            djWeatherSunFiles = (weatherFolders.firstOrNull { x -> x.name == "Sun" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
-            djWeatherStormFiles = (weatherFolders.firstOrNull { x -> x.name == "Storm" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherFogFiles = (weatherFolders.firstOrNull { x -> x.name?.uppercase() == "FOG" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherRainFiles = (weatherFolders.firstOrNull { x -> x.name?.uppercase() == "RAIN" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherSunFiles = (weatherFolders.firstOrNull { x -> x.name?.uppercase() == "SUN" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
+            djWeatherStormFiles = (weatherFolders.firstOrNull { x -> x.name?.uppercase() == "STORM" }?.listFiles() ?: emptyArray()).map { x -> x.uri }.toTypedArray()
         }
 
     }
@@ -235,7 +235,7 @@ class Gen2RadioStation(
                 RadioSegmentType.None -> {
                     //We can do anything here
                     val nextThing = rng.nextInt(5)
-                    lastSegment = RadioSegmentType.fromInt(nextThing + 1)
+                    lastSegment = RadioSegmentType.fromInt(nextThing)
                     playNext()
                 }
                 RadioSegmentType.Commercial -> {
@@ -453,10 +453,10 @@ class Gen2RadioStation(
     private inner class Song(songFolderDoc: DocumentFile?) {
         val songFiles = songFolderDoc?.listSimpleFiles(context.applicationContext)
 
-        val mainSongUri: Uri? = (songFiles ?: emptyArray()).find { x -> !x.name.contains("(Intro") && !x.name.contains("(Outro") }?.uri
-        val mainIntroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name.contains("(Intro)") }?.uri
-        val mainOutroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name.contains("(Outro)") }?.uri
-        val djIntroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name.contains("(Intro DJ") }.map { x -> x.uri }.toTypedArray()
-        val djOutroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name.contains("(Outro DJ") }.map { x -> x.uri }.toTypedArray()
+        val mainSongUri: Uri? = (songFiles ?: emptyArray()).find { x -> !x.name.uppercase().contains("(INTRO") && !x.name.uppercase().contains("(OUTRO") }?.uri
+        val mainIntroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name.uppercase().contains("(INTRO)") }?.uri
+        val mainOutroUri: Uri? = (songFiles ?: emptyArray()).find { x -> x.name.uppercase().contains("(OUTRO)") }?.uri
+        val djIntroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name.uppercase().contains("(INTRO DJ") }.map { x -> x.uri }.toTypedArray()
+        val djOutroUris: Array<Uri> = (songFiles ?: emptyArray()).filter { x -> x.name.uppercase().contains("(INTRO DJ") }.map { x -> x.uri }.toTypedArray()
     }
 }

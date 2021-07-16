@@ -115,50 +115,56 @@ class Gen3RadioStation(
 
         if (gen1Station == null) {
             //Don't bother setting things up if this is basically a Gen1 station
+
+            var songFolderName = ""
             for (file in subFiles) {
+                val upperFileName = file.name.uppercase()
                 if (file.isDirectory) {
-                    isTalkRadio = isTalkRadio || file.name.contains("Talk Shows")
+                    if (upperFileName.contains("SONGS") || upperFileName.contains("TALK SHOWS")) {
+                        songFolderName = file.name
+                    }
+                    isTalkRadio = isTalkRadio || upperFileName.contains("TALK SHOWS")
                     continue
                 }
 
                 when {
-                    file.name.startsWith("GENERAL_") -> {
+                    upperFileName.startsWith("GENERAL_") -> {
                         djGeneralFiles.add(file.uri)
                     }
-                    file.name.startsWith("SOLO_") -> {
+                    upperFileName.startsWith("SOLO_") -> {
                         djSoloFiles.add(file.uri)
                     }
-                    file.name.startsWith("MORNING_") -> {
+                    upperFileName.startsWith("MORNING_") -> {
                         djMorningFiles.add(file.uri)
                     }
-                    file.name.startsWith("AFTERNOON_") -> {
+                    upperFileName.startsWith("AFTERNOON_") -> {
                         djAfternoonFiles.add(file.uri)
                     }
-                    file.name.startsWith("EVENING_") -> {
+                    upperFileName.startsWith("EVENING_") -> {
                         djEveningFiles.add(file.uri)
                     }
-                    file.name.startsWith("NIGHT_") -> {
+                    upperFileName.startsWith("NIGHT_") -> {
                         djNightFiles.add(file.uri)
                     }
-                    file.name.startsWith("ID_") -> {
+                    upperFileName.startsWith("ID_") -> {
                         announcerFiles.add(file.uri)
                     }
-                    file.name.startsWith("TO_AD_") -> {
+                    upperFileName.startsWith("TO_AD_") -> {
                         djToAdFiles.add(file.uri)
                     }
-                    file.name.startsWith("TO_NEWS_") -> {
+                    upperFileName.startsWith("TO_NEWS_") -> {
                         djToNewsFiles.add(file.uri)
                     }
-                    file.name.startsWith("TO_WEATHER_") -> {
+                    upperFileName.startsWith("TO_WEATHER_") -> {
                         djToWeatherFiles.add(file.uri)
                     }
-                    file.name.startsWith("MORNING_") -> {
+                    upperFileName.startsWith("MORNING_") -> {
                         djMorningFiles.add(file.uri)
                     }
-                    file.name.startsWith("INTRO_") -> {
+                    upperFileName.startsWith("INTRO_") -> {
                         genericSongIntros.add(file.uri)
                     }
-                    file.name.startsWith("OUTRO_") -> {
+                    upperFileName.startsWith("OUTRO_") -> {
                         genericSongOutros.add(file.uri)
                     }
                 }
@@ -168,10 +174,10 @@ class Gen3RadioStation(
             setupNewsFiles(newsFolderDoc)
             setupWeatherFiles(weatherFolderDoc)
             if (!isTalkRadio) {
-                val songFolder = baseStationFolderDoc.findFile("Songs")
+                val songFolder = baseStationFolderDoc.findFile(songFolderName)
                 setupSongs(songFolder)
             } else {
-                val showFolder = baseStationFolderDoc.findFile("Talk Shows")
+                val showFolder = baseStationFolderDoc.findFile(songFolderName)
                 setupTalkShows(showFolder)
             }
             randomizeAll()
@@ -439,7 +445,7 @@ class Gen3RadioStation(
                 RadioSegmentType.None -> {
                     //We can do anything here
                     val nextThing = rng.nextInt(7)
-                    lastSegment = RadioSegmentType.fromInt(nextThing + 1)
+                    lastSegment = RadioSegmentType.fromInt(nextThing)
                     playNext()
                 }
                 RadioSegmentType.Commercial, RadioSegmentType.NewsReport -> {

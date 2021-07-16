@@ -15,6 +15,7 @@ import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.sc.gtradio.media.GTRadioPlayer
 import java.util.*
+import kotlin.math.abs
 
 class Gen1RadioStation(
     override val stationGroupId: String,
@@ -55,7 +56,7 @@ class Gen1RadioStation(
     init {
         stationName = getStationName(baseStationDoc)
         val files = baseStationDoc.listFiles()
-        val radioFileUri = files.firstOrNull { x -> x.name?.contains("logo") == false }?.uri
+        val radioFileUri = files.firstOrNull { x -> x.name?.uppercase()?.contains("LOGO") == false }?.uri
         mediaSource = if (radioFileUri != null) {
             val media = MediaItem.fromUri(radioFileUri)
             ProgressiveMediaSource.Factory(DefaultDataSourceFactory(context, Util.getUserAgent(context, context.packageName))).createMediaSource(media)
@@ -124,7 +125,10 @@ class Gen1RadioStation(
     }
 
     private fun seekAndPlayFile() {
-        player.seekTo(getSeekPosition())
+        val seekPos = getSeekPosition()
+        if (seekPos > 0L) {
+            player.seekTo(seekPos)
+        }
         player.repeatMode = Player.REPEAT_MODE_ALL
         player.play()
     }
@@ -139,7 +143,7 @@ class Gen1RadioStation(
             val now = Calendar.getInstance()
             val elapsedTimeSec = ((now.timeInMillis - lastStoppedTime!!.timeInMillis) / 1000).toInt()
             val divisions = (elapsedTimeSec.toFloat() / durationSec)
-            val multiplier = divisions - divisions.toInt()
+            val multiplier = abs(divisions - divisions.toInt())
             val initialStartPositionSec = (durationSec * multiplier) + lastStoppedDurationSec
             val finalPosition = if (initialStartPositionSec > durationSec) {
                 initialStartPositionSec - durationSec

@@ -7,7 +7,7 @@
 </p>
 <hr>
 
-GTRadio was originally a fun project for myself, but I consider it a collaborative, community project; so, feel free to jump in and contribute!
+GTRadio was originally a fun project for myself, but I consider it a collaborative, community project; so, [feel free to jump in and contribute](https://github.com/hellcat707hp/GTRadio/blob/master/CONTRIBUTING.md)!
 
 **IMPORTANT**<br>
 **GTRadio is not affiliated with Rockstar Games and does not come with any game audio files, and we cannot provide those files. However...**

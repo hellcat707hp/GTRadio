@@ -2,6 +2,7 @@ package com.sc.gtradio
 
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
@@ -33,11 +34,9 @@ class GroupList : Fragment() {
     }
 
     private val listAdapter = StationGroupMediaItemListAdapter { clickedItem ->
-
         musicServiceConnection?.sendCommand("setActiveStationGroupId", Bundle().apply { this.putString("stationGroupId", clickedItem.mediaId) })
         //This is real ugly
         (activity as MainActivity).navigateToRadioList(clickedItem.mediaId)
-
     }
 
     // This property is only valid between onCreateView and onDestroyView.
@@ -52,6 +51,7 @@ class GroupList : Fragment() {
             return intent
         }
     }
+
     private val permissionResultLauncher = registerForActivityResult(contract)
     { result: Uri ->
         activity?.contentResolver?.takePersistableUriPermission(result, Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -63,7 +63,29 @@ class GroupList : Fragment() {
 
     }
 
+    //Setup a listener for settings changes
+    private val sharedPrefListener = GroupListOnSharedPrefChange()
+    private inner class GroupListOnSharedPrefChange : SharedPreferences.OnSharedPreferenceChangeListener {
+        override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {
+            if (prefs != null) {
+                when(key) {
+                    resources.getString(R.string.radio_folders_uri_key) -> {
+                        //Update stations list
+                        updateLibrarySelectedComponents()
+                        if (musicServiceConnection != null) {
+                            musicServiceConnection!!.unsubscribe("root", subscriptionCallback)
+                            musicServiceConnection!!.subscribe("root", subscriptionCallback)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(this.requireActivity().applicationContext)
+        sharedPref.registerOnSharedPreferenceChangeListener(sharedPrefListener)
+
         if (musicServiceConnection == null) {
             musicServiceConnection = InjectorUtils.provideMusicServiceConnection(requireContext()).also {
                 it.subscribe("root", subscriptionCallback)

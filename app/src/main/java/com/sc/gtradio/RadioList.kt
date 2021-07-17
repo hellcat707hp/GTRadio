@@ -1,8 +1,5 @@
 package com.sc.gtradio
 
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.support.v4.media.MediaBrowserCompat
 import android.view.LayoutInflater
@@ -10,22 +7,20 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
-import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.sc.gtradio.utils.InjectorUtils
 import com.sc.gtradio.databinding.FragmentStationitemBinding
-import com.sc.gtradio.databinding.RadioListBinding
+import com.sc.gtradio.databinding.FragmentRadiolistBinding
 import com.sc.gtradio.media.*
 
 class RadioList : Fragment() {
     var stationGroupId: String = ""
 
-    private var _binding: RadioListBinding? = null
+    private var _binding: FragmentRadiolistBinding? = null
 
     private var musicServiceConnection: MusicServiceConnection? = null
 
@@ -61,25 +56,6 @@ class RadioList : Fragment() {
     // This property is only valid between onCreateView and onDestroyView.
     private val binding get() = _binding!!
 
-    private val contract = object : ActivityResultContracts.OpenDocumentTree() {
-        override fun createIntent(context: Context, input: Uri?): Intent {
-            val intent = super.createIntent(context, input)
-            intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-            return intent
-        }
-    }
-    private val permissionResultLauncher = activity?.registerForActivityResult(contract)
-    { result: Uri ->
-        activity?.contentResolver?.takePersistableUriPermission(result, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        val sharedPref = PreferenceManager.getDefaultSharedPreferences(activity?.applicationContext)
-        with (sharedPref?.edit()) {
-            this?.putString(getString(R.string.radio_folders_uri_key), result.toString())
-            this?.apply()
-        }
-    }
-
 
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -90,39 +66,15 @@ class RadioList : Fragment() {
             }
         }
 
-        _binding = RadioListBinding.inflate(inflater, container, false)
+        _binding = FragmentRadiolistBinding.inflate(inflater, container, false)
         return binding.root
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.buttonSelect.setOnClickListener {
-            permissionResultLauncher?.launch(null)
-        }
-
-        updateLibrarySelectedComponents()
-
         binding.stationList.layoutManager = LinearLayoutManager(context)
         binding.stationList.adapter = listAdapter
-    }
-
-    override fun onResume() {
-        super.onResume()
-        updateLibrarySelectedComponents()
-    }
-
-    private fun updateLibrarySelectedComponents() {
-        val sharedPref = PreferenceManager.getDefaultSharedPreferences(this.requireActivity().applicationContext)
-        val radioUri = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
-        if (radioUri.isNullOrEmpty() || activity?.contentResolver?.persistedUriPermissions?.any { x -> x.uri == Uri.parse(radioUri) && x.isReadPermission } != true) {
-            //User has no library selected, allow them to select something
-            binding.buttonSelect.visibility = View.VISIBLE
-            binding.textviewNofolder.visibility = View.VISIBLE
-        } else {
-            binding.buttonSelect.visibility = View.INVISIBLE
-            binding.textviewNofolder.visibility = View.INVISIBLE
-        }
     }
 
     override fun onDestroyView() {

@@ -16,7 +16,7 @@
         android:id="@+id/SecondFragment"
         android:name="com.sc.gtradio.RadioList"
         android:label="@string/radio_list_label"
-        tools:layout="@layout/radio_list">
+        tools:layout="@layout/fragment_radiolist">
         <argument
             android:name="stationGroupId"
             app:argType="string" />

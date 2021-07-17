@@ -1,5 +1,11 @@
-﻿# GTRadio
-An open-source, custom radio player for Android designed to produce similar functional results to the radios found in the Grand Theft Auto series of games.
+<h1 align="center">GTRadio</h1>
+<p align="center">
+  <img src="common/src/main/res/drawable-nodpi/logo_small_round.png" width="100" alt="GTRadio Logo" background/> 
+  <br>
+  <i>An open-source, custom radio player for Android designed to produce similar functional results to the radios found in the Grand Theft Auto series of games.</i>
+  <br>
+</p>
+<hr>
 
 GTRadio was originally a fun project for myself, but I consider it a collaborative, community project; so, feel free to jump in and contribute!
 

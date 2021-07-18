@@ -32,6 +32,8 @@ More info on that process can be found [here](https://medium.com/@pixplicity/set
 
 
 ## Audio File Setup
+**For game-specific audio setup instructions, please see the [Wiki](https://github.com/hellcat707hp/GTRadio/wiki/Game-Specific-Instructions).**
+
 - GTRadio is designed to work with files local to the device, organized in a specific folder structure and file naming scheme.
 - GTRadio can work with any files organized and setup in the structure specified, but it was designed with GTA game audio files in mind.
 - We are aware that extracting and organizing your own game audio files to spec can be a tedious task, and some day we may create a tool for it;

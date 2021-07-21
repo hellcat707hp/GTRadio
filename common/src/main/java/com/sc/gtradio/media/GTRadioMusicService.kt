@@ -331,7 +331,11 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         val list = ArrayList<StationGroup>()
         val subDirs = (dir?.listFiles() ?: emptyArray()).filter { x -> x.isDirectory }
         for (subDir in subDirs) {
-            list.add(StationGroup(subDir, applicationContext))
+            val group = StationGroup(subDir, applicationContext)
+            if (group.generation in 1..3) {
+                //Valid group.
+                list.add(group)
+            }
         }
         list.sortBy { x -> x.groupName }
         return list

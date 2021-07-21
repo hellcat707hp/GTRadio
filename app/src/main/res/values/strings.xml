@@ -34,5 +34,7 @@
     <string name="news_reports_summary">Note: This setting only affects gen 3 stations.</string>
 
     <string name="nothing_playing">Nothing Playing</string>
+    <string name="no_groups_available">No groups available. Double check the selected folder and your folder structure.</string>
+    <string name="sad_face">Sad face</string>
 
 </resources>

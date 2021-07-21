@@ -1,7 +1,13 @@
-﻿# GTRadio
-An open-source, custom radio player for Android designed to produce similar functional results to the radios found in the Grand Theft Auto series of games.
+<h1 align="center">GTRadio</h1>
+<p align="center">
+  <img src="common/src/main/res/drawable-nodpi/logo_small_round.png" width="100" alt="GTRadio Logo" background/> 
+  <br>
+  <i>An open-source, custom radio player for Android designed to produce similar functional results to the radios found in the Grand Theft Auto series of games.</i>
+  <br>
+</p>
+<hr>
 
-GTRadio was originally a fun project for myself, but I consider it a collaborative, community project; so, feel free to jump in and contribute!
+GTRadio was originally a fun project for myself, but I consider it a collaborative, community project; so, [feel free to jump in and contribute](https://github.com/hellcat707hp/GTRadio/blob/master/CONTRIBUTING.md)!
 
 **IMPORTANT**<br>
 **GTRadio is not affiliated with Rockstar Games and does not come with any game audio files, and we cannot provide those files. However...**
@@ -26,6 +32,8 @@ More info on that process can be found [here](https://medium.com/@pixplicity/set
 
 
 ## Audio File Setup
+**For game-specific audio setup instructions, please see the [Wiki](https://github.com/hellcat707hp/GTRadio/wiki/Game-Specific-Instructions).**
+
 - GTRadio is designed to work with files local to the device, organized in a specific folder structure and file naming scheme.
 - GTRadio can work with any files organized and setup in the structure specified, but it was designed with GTA game audio files in mind.
 - We are aware that extracting and organizing your own game audio files to spec can be a tedious task, and some day we may create a tool for it;

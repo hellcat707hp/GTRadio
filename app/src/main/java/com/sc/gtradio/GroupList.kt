@@ -29,6 +29,19 @@ class GroupList : Fragment() {
 
     private val subscriptionCallback = object : MediaBrowserCompat.SubscriptionCallback() {
         override fun onChildrenLoaded(parentId: String, children: List<MediaBrowserCompat.MediaItem>) {
+            if (_binding != null) {
+                val sharedPref = PreferenceManager.getDefaultSharedPreferences(requireActivity().applicationContext)
+                val radioUri = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
+
+                if (children.isEmpty() && activity?.contentResolver?.persistedUriPermissions?.any { x -> x.uri == Uri.parse(radioUri) && x.isReadPermission } == true) {
+                    //No stations listed and we have already selected a library, so show our nothing-found message
+                    binding.textviewNogroups.visibility = View.VISIBLE
+                    binding.sadFaceIcon.visibility = View.VISIBLE
+                } else {
+                    binding.textviewNogroups.visibility = View.INVISIBLE
+                    binding.sadFaceIcon.visibility = View.INVISIBLE
+                }
+            }
             listAdapter.submitList(children)
         }
     }
@@ -53,7 +66,10 @@ class GroupList : Fragment() {
     }
 
     private val permissionResultLauncher = registerForActivityResult(contract)
-    { result: Uri ->
+    { result: Uri? ->
+        if (result == null) {
+            return@registerForActivityResult
+        }
         activity?.contentResolver?.takePersistableUriPermission(result, Intent.FLAG_GRANT_READ_URI_PERMISSION)
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(activity?.applicationContext)
         with (sharedPref?.edit()) {
@@ -118,9 +134,17 @@ class GroupList : Fragment() {
         val sharedPref = PreferenceManager.getDefaultSharedPreferences(this.requireActivity().applicationContext)
         val radioUri = sharedPref?.getString(getString(R.string.radio_folders_uri_key), "")
         if (radioUri.isNullOrEmpty() || activity?.contentResolver?.persistedUriPermissions?.any { x -> x.uri == Uri.parse(radioUri) && x.isReadPermission } != true) {
-            //User has no library selected, allow them to select something
+            //User has no library selected, allow them to select something and possibly reset our pref value
+            if (!radioUri.isNullOrEmpty()) {
+                with (sharedPref?.edit()) {
+                    this?.putString(getString(R.string.radio_folders_uri_key), "")
+                    this?.apply()
+                }
+            }
             binding.buttonSelect.visibility = View.VISIBLE
             binding.textviewNofolder.visibility = View.VISIBLE
+            binding.textviewNogroups.visibility = View.INVISIBLE
+            binding.sadFaceIcon.visibility = View.INVISIBLE
         } else {
             binding.buttonSelect.visibility = View.INVISIBLE
             binding.textviewNofolder.visibility = View.INVISIBLE
@@ -129,6 +153,8 @@ class GroupList : Fragment() {
 
     override fun onDestroyView() {
         super.onDestroyView()
+        val sharedPref = PreferenceManager.getDefaultSharedPreferences(this.requireActivity().applicationContext)
+        sharedPref.unregisterOnSharedPreferenceChangeListener(sharedPrefListener)
         _binding = null
     }
 }

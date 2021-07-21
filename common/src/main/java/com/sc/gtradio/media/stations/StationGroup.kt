@@ -16,8 +16,8 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
 
     var mediaItem: MediaBrowserCompat.MediaItem
     var stationList: ArrayList<MediaBrowserCompat.MediaItem>
-    var generation: Int = 0
-    lateinit var groupName: String
+    var generation: Int = -1
+    var groupName: String = ""
 
     init {
         setupDataFromJson(folderDoc)
@@ -71,7 +71,7 @@ class StationGroup(val folderDoc: DocumentFile, private val context: Context) {
             jsonObj.getInt("generation")
         } catch (e: Exception) {
             //No valid generation
-            0
+            -1
         }
         groupName = try {
             jsonObj.getString("name")

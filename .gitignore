@@ -37,6 +37,7 @@ build/
 .navigation
 captures/
 output.json
+output-metadata.json
 
 #NDK
 obj/

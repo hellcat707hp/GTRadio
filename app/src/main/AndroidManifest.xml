@@ -20,21 +20,24 @@
             <meta-data android:name="android.support.PARENT_ACTIVITY" android:value=".MainActivity"/>
 
         </activity>
+
         <!-- Declare that we support Android Auto. -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+
         <activity
             android:name=".MainActivity"
             android:label="@string/app_name"
             android:theme="@style/Theme.GTRadio.NoActionBar">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+            </intent-filter>
         </activity>
-
-        <meta-data
-            android:name="com.google.android.gms.car.application"
-            android:resource="@xml/automotive_app_desc" />
         <!--
         Declare the common MediaBrowserService for use in the mobile app, including
         with the Android Auto app.

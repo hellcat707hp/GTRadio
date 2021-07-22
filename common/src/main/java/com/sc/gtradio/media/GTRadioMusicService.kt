@@ -103,13 +103,16 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         }
 
         override fun onPlay() {
-            if (activeStation == null && activeStationGroupId == null) {
-                return
-            } else if (activeStation == null && activeStationGroupId != null) {
+            if (activeStation == null && activeStationGroupId != null) {
                 //Pick up the first station in the group
                 val group = getStationGroup(activeStationGroupId!!) ?: return
                 val firstStation = group.stationList.firstOrNull() ?: return
                 activeStation = getRadioStation(group, firstStation.mediaId!!)
+            } else if (activeStation == null) {
+                //Pick the first station overall
+                val mediaId = fullStationList.firstOrNull()?.mediaId ?: return
+                val group = getStationGroupContainingMedia(mediaId) ?: return
+                activeStation = getRadioStation(group, mediaId)
             }
 
             if (activeStation == null) {
@@ -275,6 +278,24 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
                 .build()
             session.setPlaybackState(playbackState)
             session.setMetadata(activeStation!!.metadata)
+        }
+
+        override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+            if (fullStationList.isNullOrEmpty()) {
+                return
+            }
+
+            if (query.isNullOrEmpty()) {
+                //Play the current station or the first station
+                this.onPlay()
+                return
+            }
+
+            //TODO: Implement some sort of actual search algorithm rather than a .contains()
+            val station = fullStationList.find { x -> x.isPlayable && x.description.description?.contains(query) == true }
+            if (station != null) {
+                this.onPlayFromMediaId(station.mediaId, null)
+            }
         }
 
     }

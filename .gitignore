@@ -42,3 +42,7 @@ output-metadata.json
 #NDK
 obj/
 .externalNativeBuild
+
+#Other IDEs
+.vs
+.vscode

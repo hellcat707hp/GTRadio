@@ -49,12 +49,6 @@ class GTRadioNotificationManager(
     }
 
     fun showNotificationForPlayer(player: Player){
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            // Something is really broken about the notifications in Android 11
-            // Reference below possibly? But I've already tried fixing/adjusting the icons to use and its not helping
-            //  https://stackoverflow.com/questions/47368187/android-oreo-notification-crashes-system-ui
-            return
-        }
         notificationManager.setPlayer(player)
         updatePlayerButtons(player)
     }
@@ -68,8 +62,8 @@ class GTRadioNotificationManager(
         } else {
             notificationManager.setUseNextActionInCompactView(player.hasNext())
             notificationManager.setUseNextAction(player.hasNext())
-            notificationManager.setUsePlayPauseActions(!player.isPlaying)
-            notificationManager.setUseStopAction(player.isPlaying)
+            notificationManager.setUsePlayPauseActions(true)
+            notificationManager.setUseStopAction(false)
             notificationManager.setUsePreviousActionInCompactView(player.hasPrevious())
             notificationManager.setUsePreviousAction(player.hasPrevious())
         }

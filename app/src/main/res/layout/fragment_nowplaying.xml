@@ -24,14 +24,13 @@
     app:layout_constraintStart_toStartOf="parent"
     tools:context=".NowPlayingFragment">
 
-    <androidx.constraintlayout.widget.Barrier
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        app:barrierDirection="top" />
+
     <View
         android:layout_width="match_parent"
         android:layout_height="1dp"
-        android:background="?android:attr/listDivider"/>
+        android:background="?android:attr/listDivider"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
 
     <ImageView
         android:id="@+id/albumArt"
@@ -54,12 +53,27 @@
         android:layout_marginStart="8dp"
         android:ellipsize="end"
         android:maxLines="2"
-        android:textAppearance="@style/TextAppearance.GTRadio.Subtitle"
-        app:layout_constraintBottom_toBottomOf="parent"
+        android:textAppearance="@style/TextAppearance.Material3.TitleSmall"
+        app:layout_constraintBottom_toTopOf="@id/stationAlbum"
         app:layout_constraintEnd_toStartOf="@id/previousButton"
         app:layout_constraintStart_toEndOf="@+id/albumArt"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_chainStyle="packed"
         tools:text="Station Title" />
+
+    <TextView
+        android:id="@+id/stationAlbum"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="@style/TextAppearance.Material3.BodySmall"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/previousButton"
+        app:layout_constraintStart_toEndOf="@+id/albumArt"
+        app:layout_constraintTop_toBottomOf="@+id/stationTitle"
+        tools:text="Station Album" />
 
     <ImageButton
         android:id="@+id/playStopButton"
@@ -73,7 +87,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/nextButton"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_baseline_play_arrow" />
+        app:srcCompat="@drawable/play_arrow_24px" />
 
     <ImageButton
         android:id="@+id/previousButton"
@@ -87,7 +101,7 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@+id/playStopButton"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_baseline_skip_previous" />
+        app:srcCompat="@drawable/skip_previous_24px" />
 
     <ImageButton
         android:id="@+id/nextButton"
@@ -101,6 +115,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:srcCompat="@drawable/ic_baseline_skip_next" />
+        app:srcCompat="@drawable/skip_next_24px" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

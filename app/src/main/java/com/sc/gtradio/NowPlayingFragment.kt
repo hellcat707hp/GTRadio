@@ -73,6 +73,7 @@ class NowPlayingFragment : Fragment() {
         // Only update media if the item exists
         if (mediaMetadata.description.mediaId?.isNotBlank() == true) {
             binding.stationTitle.text = mediaMetadata.description.title
+            binding.stationAlbum.text = mediaMetadata.description.subtitle
             binding.albumArt.setImageBitmap(mediaMetadata.description.iconBitmap)
         } else {
             binding.stationTitle.text = getString(R.string.nothing_playing)
@@ -80,9 +81,9 @@ class NowPlayingFragment : Fragment() {
 
         //Update the play buttons
         if (playbackState.isPlaying) {
-            binding.playStopButton.setImageResource(R.drawable.ic_baseline_stop)
+            binding.playStopButton.setImageResource(R.drawable.stop_24px)
         } else {
-            binding.playStopButton.setImageResource(R.drawable.ic_baseline_play_arrow)
+            binding.playStopButton.setImageResource(R.drawable.play_arrow_24px)
         }
 
         binding.previousButton.visibility = if (playbackState.isSkipToPreviousEnabled) View.VISIBLE else View.INVISIBLE

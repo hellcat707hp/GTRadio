@@ -1,22 +1,22 @@
-package com.sc.gtradio.media
-
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Bitmap
-import android.graphics.ImageDecoder
-import android.os.Build
-import android.provider.MediaStore
 import android.support.v4.media.session.MediaControllerCompat
 import android.support.v4.media.session.MediaSessionCompat
-import com.google.android.exoplayer2.DefaultControlDispatcher
-import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.ui.PlayerNotificationManager
-
+import androidx.core.content.ContextCompat
+import androidx.core.content.ContextCompat.registerReceiver
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.PlayerNotificationManager
+import com.sc.gtradio.media.R
 
 const val NOW_PLAYING_CHANNEL_ID = "com.sc.gtradio.media.NOW_PLAYING"
 const val NOW_PLAYING_NOTIFICATION_ID = 0xb369 // Arbitrary number used to identify our notification
 
-class GTRadioNotificationManager(
+@UnstableApi class GTRadioNotificationManager(
     private val context: Context,
     sessionToken: MediaSessionCompat.Token,
     notificationListener: PlayerNotificationManager.NotificationListener,
@@ -25,36 +25,40 @@ class GTRadioNotificationManager(
 
     init {
         val mediaController = MediaControllerCompat(context, sessionToken)
-
-        notificationManager = PlayerNotificationManager.createWithNotificationChannel(
+        notificationManager = PlayerNotificationManager.Builder(
             context,
-            NOW_PLAYING_CHANNEL_ID,
-            R.string.notification_channel,
-            R.string.notification_channel_description,
-            NOW_PLAYING_NOTIFICATION_ID,
-            DescriptionAdapter(mediaController),
-            notificationListener
-        ).apply {
-
-            setMediaSessionToken(sessionToken)
-
-            // Don't display the rewind or fast-forward buttons, or the media time
-            setUseChronometer(false)
-            setControlDispatcher(CustomControlDispatcher(sessionToken))
-        }
+            NOW_PLAYING_NOTIFICATION_ID, NOW_PLAYING_CHANNEL_ID
+        )
+            .setChannelNameResourceId(R.string.notification_channel)
+            .setChannelDescriptionResourceId(R.string.notification_channel_description)
+            .setMediaDescriptionAdapter(DescriptionAdapter(mediaController))
+            .setNotificationListener(notificationListener)
+            .build().apply {
+                setMediaSessionToken(sessionToken)
+                // Don't display the rewind or fast-forward buttons, or the media time
+                setUseChronometer(false)
+                registerReceiver(
+                    context,
+                    NotificationReceiver(context, sessionToken),
+                    NotificationReceiver.intentFilter,
+                    ContextCompat.RECEIVER_NOT_EXPORTED
+                )
+                setUseRewindAction(false)
+                setUseFastForwardAction(false)
+            }
     }
 
     fun hideNotification() {
         notificationManager.setPlayer(null)
     }
 
-    fun showNotificationForPlayer(player: Player){
+    fun showNotificationForPlayer(player: Player) {
         notificationManager.setPlayer(player)
         updatePlayerButtons(player)
     }
 
     fun updatePlayerButtons(player: Player?) {
-        if (player == null ) {
+        if (player == null) {
             notificationManager.setUseNextAction(false)
             notificationManager.setUsePreviousAction(false)
             notificationManager.setUsePlayPauseActions(false)
@@ -71,61 +75,70 @@ class GTRadioNotificationManager(
 
     private inner class DescriptionAdapter(private val controller: MediaControllerCompat) :
         PlayerNotificationManager.MediaDescriptionAdapter {
-            override fun getCurrentContentTitle(player: Player): CharSequence {
-                return controller.metadata.description.title.toString()
-            }
-
-            override fun createCurrentContentIntent(player: Player): PendingIntent? {
-                return controller.sessionActivity
-            }
-
-            override fun getCurrentContentText(player: Player): CharSequence {
-                return if (controller.metadata.description.subtitle == null) {
-                    ""
-                } else  {
-                    controller.metadata.description.subtitle.toString()
-                }
-            }
-
-            override fun getCurrentLargeIcon(player: Player, callback: PlayerNotificationManager.BitmapCallback): Bitmap? {
-                return controller.metadata.description.iconBitmap
-            }
-
-            override fun getCurrentSubText(player: Player): CharSequence {
-                return if (controller.metadata.description.subtitle == null) {
-                    ""
-                } else  {
-                    controller.metadata.description.subtitle.toString()
-                }
-            }
-
+        override fun getCurrentContentTitle(player: Player): CharSequence {
+            return controller.metadata.description.title.toString()
         }
 
-        private inner class CustomControlDispatcher(sessionToken: MediaSessionCompat.Token): DefaultControlDispatcher() {
-            val mediaController = MediaControllerCompat(context, sessionToken)
+        override fun createCurrentContentIntent(player: Player): PendingIntent? {
+            return controller.sessionActivity
+        }
 
-            override fun dispatchNext(player: Player): Boolean {
-                mediaController.transportControls.skipToNext()
-                return true
+        override fun getCurrentContentText(player: Player): CharSequence {
+            return if (controller.metadata.description.subtitle == null) {
+                ""
+            } else {
+                controller.metadata.description.subtitle.toString()
             }
+        }
 
-            override fun dispatchPrevious(player: Player): Boolean {
-                mediaController.transportControls.skipToPrevious()
-                return true
+        override fun getCurrentLargeIcon(
+            player: Player,
+            callback: PlayerNotificationManager.BitmapCallback
+        ): Bitmap? {
+            return controller.metadata.description.iconBitmap
+        }
+
+        override fun getCurrentSubText(player: Player): CharSequence {
+            return if (controller.metadata.description.subtitle == null) {
+                ""
+            } else {
+                controller.metadata.description.subtitle.toString()
             }
+        }
 
-            override fun dispatchStop(player: Player, reset: Boolean): Boolean {
-                mediaController.transportControls.stop()
-                return true
-            }
+    }
+}
 
-            override fun isRewindEnabled(): Boolean {
-                return false
-            }
-
-            override fun isFastForwardEnabled(): Boolean {
-                return false
-            }
-
+@UnstableApi class NotificationReceiver(private val context: Context, sessionToken: MediaSessionCompat.Token) : BroadcastReceiver() {
+    companion object {
+        val intentFilter = IntentFilter().apply {
+            addAction(PlayerNotificationManager.ACTION_NEXT)
+            addAction(PlayerNotificationManager.ACTION_PREVIOUS)
+            addAction(PlayerNotificationManager.ACTION_PAUSE)
+            addAction(PlayerNotificationManager.ACTION_PLAY)
+            addAction(PlayerNotificationManager.ACTION_STOP)
         }
     }
+
+    val mediaController = MediaControllerCompat(context, sessionToken)
+
+    override fun onReceive(context: Context?, intent: Intent?) {
+        when (intent?.action) {
+            PlayerNotificationManager.ACTION_NEXT -> {
+                mediaController.transportControls.skipToNext()
+            }
+            PlayerNotificationManager.ACTION_PREVIOUS -> {
+                mediaController.transportControls.skipToPrevious()
+            }
+            PlayerNotificationManager.ACTION_PLAY -> {
+                mediaController.transportControls.play()
+            }
+            PlayerNotificationManager.ACTION_PAUSE -> {
+                mediaController.transportControls.stop()
+            }
+            PlayerNotificationManager.ACTION_STOP -> {
+                mediaController.transportControls.stop()
+            }
+        }
+    }
+}

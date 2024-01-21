@@ -14,7 +14,7 @@ import androidx.documentfile.provider.DocumentFile
 import java.io.Closeable
 
 object FileUtils {
-    @RequiresApi(Build.VERSION_CODES.P)
+
     fun getBitmapFromUri(contentResolver: ContentResolver, fileUri: Uri?): Bitmap? {
         if (fileUri == null) {
             return null

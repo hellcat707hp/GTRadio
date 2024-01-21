@@ -8,7 +8,7 @@ android {
 
     defaultConfig {
         applicationId "com.sc.gtradio"
-        minSdkVersion 24
+        minSdkVersion 28
         targetSdkVersion 34
         versionCode 34010100  //Scheme (all two-digit numbers): <api_version><app_major_version><app_minor_version><app_patch_version>
         versionName "1.1.0"

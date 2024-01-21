@@ -1,28 +1,49 @@
-package com.sc.gtradio.media
-
+import android.media.AudioDeviceInfo
 import android.os.Looper
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.Surface
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.TextureView
-import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.device.DeviceInfo
-import com.google.android.exoplayer2.metadata.Metadata
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.ShuffleOrder
-import com.google.android.exoplayer2.source.TrackGroupArray
-import com.google.android.exoplayer2.text.Cue
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray
-import com.google.android.exoplayer2.trackselection.TrackSelector
-import com.google.android.exoplayer2.util.Clock
-import com.google.android.exoplayer2.video.VideoSize
+import androidx.annotation.OptIn
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.AuxEffectInfo
+import androidx.media3.common.DeviceInfo
+import androidx.media3.common.Effect
+import androidx.media3.common.Format
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackParameters
+import androidx.media3.common.Player
+import androidx.media3.common.PriorityTaskManager
+import androidx.media3.common.Timeline
+import androidx.media3.common.TrackSelectionParameters
+import androidx.media3.common.Tracks
+import androidx.media3.common.VideoSize
+import androidx.media3.common.text.CueGroup
+import androidx.media3.common.util.Clock
+import androidx.media3.common.util.Size
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.DecoderCounters
+import androidx.media3.exoplayer.ExoPlaybackException
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.PlayerMessage
+import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.SeekParameters
+import androidx.media3.exoplayer.analytics.AnalyticsCollector
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ShuffleOrder
+import androidx.media3.exoplayer.source.TrackGroupArray
+import androidx.media3.exoplayer.trackselection.TrackSelectionArray
+import androidx.media3.exoplayer.trackselection.TrackSelector
+import androidx.media3.exoplayer.video.VideoFrameMetadataListener
+import androidx.media3.exoplayer.video.spherical.CameraMotionListener
 
 /**
  * A custom ExoPlayer container that more accurately represents certain attributes about our faux live-stream behavior
  */
-class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
+@UnstableApi class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
 
     var radioPlaybackState: Int = PlaybackStateCompat.STATE_NONE
 
@@ -60,8 +81,52 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return previousEnabled
     }
 
+    override fun hasPreviousWindow(): Boolean {
+        return exoPlayer.hasPreviousWindow()
+    }
+
+    override fun hasPreviousMediaItem(): Boolean {
+        return previousEnabled
+    }
+
+    override fun seekToPreviousWindow() {
+        return exoPlayer.seekToPreviousWindow()
+    }
+
+    override fun seekToPreviousMediaItem() {
+        return exoPlayer.seekToPreviousMediaItem()
+    }
+
+    override fun getMaxSeekToPreviousPosition(): Long {
+        return exoPlayer.maxSeekToPreviousPosition
+    }
+
+    override fun seekToPrevious() {
+        return exoPlayer.seekToPrevious()
+    }
+
     override fun hasNext(): Boolean {
         return nextEnabled
+    }
+
+    override fun hasNextWindow(): Boolean {
+        return exoPlayer.hasNextWindow()
+    }
+
+    override fun hasNextMediaItem(): Boolean {
+        return nextEnabled;
+    }
+
+    override fun seekToNextWindow() {
+        return exoPlayer.seekToNextWindow()
+    }
+
+    override fun seekToNextMediaItem() {
+        return exoPlayer.seekToNextMediaItem()
+    }
+
+    override fun seekToNext() {
+        return exoPlayer.seekToNext()
     }
 
     override fun getDuration(): Long {
@@ -85,7 +150,10 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
     override fun isCommandAvailable(command: Int): Boolean {
         return when(command) {
             Player.COMMAND_PLAY_PAUSE -> {
-                !isPlaying
+                true
+            }
+            Player.COMMAND_STOP -> {
+                isPlaying
             }
             Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
                 hasNext()
@@ -97,6 +165,10 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
                 exoPlayer.isCommandAvailable(command)
             }
         }
+    }
+
+    override fun canAdvertiseSession(): Boolean {
+        return exoPlayer.canAdvertiseSession()
     }
 
     override fun getAvailableCommands(): Player.Commands {
@@ -117,16 +189,8 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return exoPlayer.applicationLooper
     }
 
-    override fun addListener(listener: Player.EventListener) {
-        exoPlayer.addListener(listener)
-    }
-
     override fun addListener(listener: Player.Listener) {
         exoPlayer.addListener(listener)
-    }
-
-    override fun removeListener(listener: Player.EventListener) {
-        exoPlayer.removeListener(listener)
     }
 
     override fun removeListener(listener: Player.Listener) {
@@ -185,6 +249,70 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         exoPlayer.setShuffleOrder(shuffleOrder)
     }
 
+    override fun setAudioSessionId(audioSessionId: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getAudioSessionId(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun setAuxEffectInfo(auxEffectInfo: AuxEffectInfo) {
+        TODO("Not yet implemented")
+    }
+
+    override fun clearAuxEffectInfo() {
+        TODO("Not yet implemented")
+    }
+
+    override fun setPreferredAudioDevice(audioDeviceInfo: AudioDeviceInfo?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setSkipSilenceEnabled(skipSilenceEnabled: Boolean) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getSkipSilenceEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun setVideoEffects(videoEffects: MutableList<Effect>) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setVideoScalingMode(videoScalingMode: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getVideoScalingMode(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun setVideoChangeFrameRateStrategy(videoChangeFrameRateStrategy: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getVideoChangeFrameRateStrategy(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun setVideoFrameMetadataListener(listener: VideoFrameMetadataListener) {
+        TODO("Not yet implemented")
+    }
+
+    override fun clearVideoFrameMetadataListener(listener: VideoFrameMetadataListener) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setCameraMotionListener(listener: CameraMotionListener) {
+        TODO("Not yet implemented")
+    }
+
+    override fun clearCameraMotionListener(listener: CameraMotionListener) {
+        TODO("Not yet implemented")
+    }
+
     override fun createMessage(target: PlayerMessage.Target): PlayerMessage {
         return exoPlayer.createMessage(target)
     }
@@ -209,14 +337,41 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return exoPlayer.pauseAtEndOfMediaItems
     }
 
-    override fun experimentalSetOffloadSchedulingEnabled(offloadSchedulingEnabled: Boolean) {
-        exoPlayer.experimentalSetOffloadSchedulingEnabled(offloadSchedulingEnabled)
+    override fun getAudioFormat(): Format? {
+        TODO("Not yet implemented")
     }
 
-    override fun experimentalIsSleepingForOffload(): Boolean {
-        return exoPlayer.experimentalIsSleepingForOffload()
+    override fun getVideoFormat(): Format? {
+        TODO("Not yet implemented")
     }
 
+    override fun getAudioDecoderCounters(): DecoderCounters? {
+        TODO("Not yet implemented")
+    }
+
+    override fun getVideoDecoderCounters(): DecoderCounters? {
+        TODO("Not yet implemented")
+    }
+
+    override fun setHandleAudioBecomingNoisy(handleAudioBecomingNoisy: Boolean) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setWakeMode(wakeMode: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setPriorityTaskManager(priorityTaskManager: PriorityTaskManager?) {
+        TODO("Not yet implemented")
+    }
+
+    override fun isSleepingForOffload(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun isTunnelingEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
 
     override fun addMediaItem(mediaItem: MediaItem) {
         exoPlayer.addMediaItem(mediaItem)
@@ -240,6 +395,18 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
 
     override fun moveMediaItems(fromIndex: Int, toIndex: Int, newIndex: Int) {
         exoPlayer.moveMediaItems(fromIndex, toIndex, newIndex)
+    }
+
+    override fun replaceMediaItem(index: Int, mediaItem: MediaItem) {
+        TODO("Not yet implemented")
+    }
+
+    override fun replaceMediaItems(
+        fromIndex: Int,
+        toIndex: Int,
+        mediaItems: MutableList<MediaItem>
+    ) {
+        TODO("Not yet implemented")
     }
 
     override fun removeMediaItem(index: Int) {
@@ -272,10 +439,6 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
 
     override fun getPlayerError(): ExoPlaybackException? {
         return exoPlayer.playerError
-    }
-
-    override fun getPlaybackError(): ExoPlaybackException? {
-        return exoPlayer.playbackError
     }
 
     override fun setPlayWhenReady(playWhenReady: Boolean) {
@@ -322,6 +485,22 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         exoPlayer.seekTo(windowIndex, positionMs)
     }
 
+    override fun getSeekBackIncrement(): Long {
+        TODO("Not yet implemented")
+    }
+
+    override fun seekBack() {
+        TODO("Not yet implemented")
+    }
+
+    override fun getSeekForwardIncrement(): Long {
+        TODO("Not yet implemented")
+    }
+
+    override fun seekForward() {
+        TODO("Not yet implemented")
+    }
+
     override fun setPlaybackParameters(playbackParameters: PlaybackParameters) {
         exoPlayer.playbackParameters = playbackParameters
     }
@@ -339,29 +518,32 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         exoPlayer.stop()
     }
 
-    override fun stop(reset: Boolean) {
-        radioPlaybackState = PlaybackStateCompat.STATE_STOPPED
-        exoPlayer.stop(reset)
-    }
-
     override fun release() {
         exoPlayer.release()
     }
 
-    override fun getCurrentTrackGroups(): TrackGroupArray {
-        return exoPlayer.currentTrackGroups
+    override fun getCurrentTracks(): Tracks {
+        TODO("Not yet implemented")
     }
 
-    override fun getCurrentTrackSelections(): TrackSelectionArray {
-        return exoPlayer.currentTrackSelections
+    override fun getTrackSelectionParameters(): TrackSelectionParameters {
+        TODO("Not yet implemented")
     }
 
-    override fun getCurrentStaticMetadata(): MutableList<Metadata> {
-        return exoPlayer.currentStaticMetadata
+    override fun setTrackSelectionParameters(parameters: TrackSelectionParameters) {
+        TODO("Not yet implemented")
     }
 
     override fun getMediaMetadata(): MediaMetadata {
         return exoPlayer.mediaMetadata
+    }
+
+    override fun getPlaylistMetadata(): MediaMetadata {
+        TODO("Not yet implemented")
+    }
+
+    override fun setPlaylistMetadata(mediaMetadata: MediaMetadata) {
+        TODO("Not yet implemented")
     }
 
     override fun getCurrentManifest(): Any? {
@@ -380,16 +562,24 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return exoPlayer.currentWindowIndex
     }
 
+    override fun getCurrentMediaItemIndex(): Int {
+        TODO("Not yet implemented")
+    }
+
     override fun getNextWindowIndex(): Int {
         return exoPlayer.nextWindowIndex
+    }
+
+    override fun getNextMediaItemIndex(): Int {
+        TODO("Not yet implemented")
     }
 
     override fun getPreviousWindowIndex(): Int {
         return exoPlayer.previousWindowIndex
     }
 
-    override fun getCurrentTag(): Any? {
-        return exoPlayer.currentTag
+    override fun getPreviousMediaItemIndex(): Int {
+        TODO("Not yet implemented")
     }
 
     override fun getCurrentMediaItem(): MediaItem? {
@@ -420,8 +610,16 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return exoPlayer.isCurrentWindowDynamic
     }
 
+    override fun isCurrentMediaItemDynamic(): Boolean {
+        TODO("Not yet implemented")
+    }
+
     override fun isCurrentWindowLive(): Boolean {
         return exoPlayer.isCurrentWindowLive
+    }
+
+    override fun isCurrentMediaItemLive(): Boolean {
+        TODO("Not yet implemented")
     }
 
     override fun getCurrentLiveOffset(): Long {
@@ -430,6 +628,10 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
 
     override fun isCurrentWindowSeekable(): Boolean {
         return exoPlayer.isCurrentWindowSeekable
+    }
+
+    override fun isCurrentMediaItemSeekable(): Boolean {
+        TODO("Not yet implemented")
     }
 
     override fun isPlayingAd(): Boolean {
@@ -468,7 +670,7 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return exoPlayer.volume
     }
 
-    override fun getCurrentCues(): MutableList<Cue> {
+    override fun getCurrentCues(): CueGroup {
         return exoPlayer.currentCues
     }
 
@@ -488,16 +690,36 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         exoPlayer.deviceVolume = volume
     }
 
+    override fun setDeviceVolume(volume: Int, flags: Int) {
+        TODO("Not yet implemented")
+    }
+
     override fun increaseDeviceVolume() {
         exoPlayer.increaseDeviceVolume()
+    }
+
+    override fun increaseDeviceVolume(flags: Int) {
+        TODO("Not yet implemented")
     }
 
     override fun decreaseDeviceVolume() {
         exoPlayer.decreaseDeviceVolume()
     }
 
+    override fun decreaseDeviceVolume(flags: Int) {
+        TODO("Not yet implemented")
+    }
+
     override fun setDeviceMuted(muted: Boolean) {
         exoPlayer.isDeviceMuted = muted
+    }
+
+    override fun setDeviceMuted(muted: Boolean, flags: Int) {
+        TODO("Not yet implemented")
+    }
+
+    override fun setAudioAttributes(audioAttributes: AudioAttributes, handleAudioFocus: Boolean) {
+        TODO("Not yet implemented")
     }
 
     override fun getAudioComponent(): ExoPlayer.AudioComponent? {
@@ -512,10 +734,6 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return exoPlayer.textComponent
     }
 
-    override fun getMetadataComponent(): ExoPlayer.MetadataComponent? {
-        return exoPlayer.metadataComponent
-    }
-
     override fun getDeviceComponent(): ExoPlayer.DeviceComponent? {
         return exoPlayer.deviceComponent
     }
@@ -528,6 +746,18 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         exoPlayer.removeAudioOffloadListener(listener)
     }
 
+    override fun getAnalyticsCollector(): AnalyticsCollector {
+        TODO("Not yet implemented")
+    }
+
+    override fun addAnalyticsListener(listener: AnalyticsListener) {
+        TODO("Not yet implemented")
+    }
+
+    override fun removeAnalyticsListener(listener: AnalyticsListener) {
+        TODO("Not yet implemented")
+    }
+
     override fun getRendererCount(): Int {
         return exoPlayer.rendererCount
     }
@@ -536,8 +766,20 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
         return exoPlayer.getRendererType(index)
     }
 
+    override fun getRenderer(index: Int): Renderer {
+        TODO("Not yet implemented")
+    }
+
     override fun getTrackSelector(): TrackSelector? {
         return exoPlayer.trackSelector
+    }
+
+    override fun getCurrentTrackGroups(): TrackGroupArray {
+        TODO("Not yet implemented")
+    }
+
+    override fun getCurrentTrackSelections(): TrackSelectionArray {
+        TODO("Not yet implemented")
     }
 
     override fun getPlaybackLooper(): Looper {
@@ -546,10 +788,6 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
 
     override fun getClock(): Clock {
         return exoPlayer.clock
-    }
-
-    override fun retry() {
-        exoPlayer.retry()
     }
 
     override fun setMediaSources(mediaSources: MutableList<MediaSource>) {
@@ -605,6 +843,10 @@ class GTRadioPlayer(private val exoPlayer: ExoPlayer): ExoPlayer {
     }
 
     override fun getVideoSize(): VideoSize {
+        TODO("Not yet implemented")
+    }
+
+    override fun getSurfaceSize(): Size {
         TODO("Not yet implemented")
     }
 

@@ -71,7 +71,11 @@ class GroupList : Fragment() {
             return@registerForActivityResult
         }
         activity?.contentResolver?.takePersistableUriPermission(result, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        val sharedPref = PreferenceManager.getDefaultSharedPreferences(activity?.applicationContext)
+        val sharedPref = activity?.applicationContext?.let {
+            PreferenceManager.getDefaultSharedPreferences(
+                it
+            )
+        }
         with (sharedPref?.edit()) {
             this?.putString(getString(R.string.radio_folders_uri_key), result.toString())
             this?.apply()

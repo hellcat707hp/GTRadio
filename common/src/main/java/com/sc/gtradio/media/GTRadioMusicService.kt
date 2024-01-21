@@ -1,5 +1,7 @@
 package com.sc.gtradio.media
 
+import GTRadioNotificationManager
+import GTRadioPlayer
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Intent
@@ -16,13 +18,19 @@ import android.util.Log
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
-import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.ui.PlayerNotificationManager
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.exoplayer.ExoPlaybackException
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.SimpleExoPlayer
+import androidx.media3.ui.PlayerNotificationManager
 import com.sc.gtradio.media.stations.*
 import java.util.ArrayList
 
-open class GTRadioMusicService : MediaBrowserServiceCompat() {
+@UnstableApi open class GTRadioMusicService : MediaBrowserServiceCompat() {
     private var stationGroups: ArrayList<StationGroup> = ArrayList()
     private var fullStationList: ArrayList<MediaItem> = ArrayList()
     private val stationCache: MutableMap<String, RadioStation> = mutableMapOf()
@@ -70,7 +78,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
 
     private lateinit var notificationManager: GTRadioNotificationManager
     private val gtrAudioAttributes = AudioAttributes.Builder()
-        .setContentType(C.CONTENT_TYPE_MUSIC)
+        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
         .setUsage(C.USAGE_MEDIA)
         .build()
     private val playerListener = PlayerEventListener()
@@ -310,7 +318,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         // Build a PendingIntent that can be used to launch the UI.
         val sessionActivityPendingIntent =
             packageManager?.getLaunchIntentForPackage(packageName)?.let { sessionIntent ->
-                PendingIntent.getActivity(this, 0, sessionIntent, 0)
+                PendingIntent.getActivity(this, 0, sessionIntent, PendingIntent.FLAG_MUTABLE)
             }
 
         // Create a new MediaSession.
@@ -490,6 +498,7 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
             notificationManager.updatePlayerButtons(radioPlayer)
             when (val actualPlaybackState = radioPlayer.playbackState) {
+                Player.STATE_IDLE,
                 Player.STATE_BUFFERING,
                 Player.STATE_READY -> {
                     notificationManager.showNotificationForPlayer(radioPlayer)
@@ -510,23 +519,23 @@ open class GTRadioMusicService : MediaBrowserServiceCompat() {
             }
         }
 
-        override fun onPlayerError(error: ExoPlaybackException) {
+        override fun onPlayerError(error: PlaybackException) {
             var message = R.string.generic_error
-            when (error.type) {
+            when (error.errorCode) {
                 // If the data from MediaSource object could not be loaded the Exoplayer raises
                 // a type_source error.
                 // An error message is printed to UI via Toast message to inform the user.
                 ExoPlaybackException.TYPE_SOURCE -> {
                     message = R.string.error_media_not_found
-                    Log.e("", "TYPE_SOURCE: " + error.sourceException.message)
+                    Log.e("", "TYPE_SOURCE: " + error.message)
                 }
                 // If the error occurs in a render component, Exoplayer raises a type_remote error.
                 ExoPlaybackException.TYPE_RENDERER -> {
-                    Log.e("", "TYPE_RENDERER: " + error.rendererException.message)
+                    Log.e("", "TYPE_RENDERER: " + error.message)
                 }
                 // If occurs an unexpected RuntimeException Exoplayer raises a type_unexpected error.
                 ExoPlaybackException.TYPE_UNEXPECTED -> {
-                    Log.e("", "TYPE_UNEXPECTED: " + error.unexpectedException.message)
+                    Log.e("", "TYPE_UNEXPECTED: " + error.message)
                 }
 
                 // If the error occurs in a remote component, Exoplayer raises a type_remote error.

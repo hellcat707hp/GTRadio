@@ -9,20 +9,18 @@ import android.net.Uri
 import android.os.Build
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import androidx.annotation.RequiresApi
 import androidx.documentfile.provider.DocumentFile
 import java.io.Closeable
 
 object FileUtils {
+    @RequiresApi(Build.VERSION_CODES.P)
     fun getBitmapFromUri(contentResolver: ContentResolver, fileUri: Uri?): Bitmap? {
         if (fileUri == null) {
             return null
         }
 
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-            ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, fileUri))
-        } else {
-            MediaStore.Images.Media.getBitmap(contentResolver, fileUri)
-        }
+        return ImageDecoder.decodeBitmap(ImageDecoder.createSource(contentResolver, fileUri))
     }
 
    // Util method to close a closeable

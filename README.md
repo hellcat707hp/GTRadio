@@ -30,9 +30,12 @@ The process for sideloading apps is pretty simple and a more comprehensive guide
 3. Find the APK on your device using a file manager, and choose to open/install the APK.
 
 **A note on sideloading and Android Auto** <br>
-Android Auto only trusts/shows apps installed via the Play Store, meaning normal sideloading will result in GTRadio not being available in Android Auto. 
-There is a workaround using adb to install the APK that marks the app as installed by the Play Store. 
-More info on that process can be found [here](https://medium.com/@pixplicity/setting-the-install-vendor-of-an-app-7d7deacb01ee).
+Android Auto only trusts/shows apps installed via the Play Store, meaning normal sideloading will result in GTRadio not being available in Android Auto.
+The proper way to handle this is to enable developer mode for Android Auto, then under the Developer settings for Android Auto, check the "Uknown sources" box.
+More details on enabling developer mode for Android Auto can be found [here](https://developer.android.com/training/cars/testing#developer-mode).
+
+> There was also an old workaround using adb to install the APK that marks the app as installed by the Play Store, but this method seems to no longer be reliable.
+> More info on that process can be found [here](https://medium.com/@pixplicity/setting-the-install-vendor-of-an-app-7d7deacb01ee).
 
 
 ## Audio File Setup

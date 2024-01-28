@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-feature
+        android:name="android.hardware.type.automotive" />
+    <uses-feature
+        android:name="android.hardware.wifi"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.screen.portrait"
+        android:required="false" />
+    <uses-feature
+        android:name="android.hardware.screen.landscape"
+        android:required="false" />
+
     <application
         android:allowBackup="true"
         android:appCategory="audio"
@@ -23,6 +34,7 @@
         -->
         <service
             android:name="com.sc.gtradio.media.GTRadioMusicService"
+            android:enabled="true"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.media.browse.MediaBrowserService" />
@@ -30,9 +42,4 @@
             </intent-filter>
         </service>
     </application>
-
-    <uses-feature
-        android:name="android.hardware.type.automotive"
-        android:required="true" />
-
 </manifest>

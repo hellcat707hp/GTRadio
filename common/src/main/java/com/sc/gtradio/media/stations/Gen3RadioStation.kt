@@ -231,6 +231,7 @@ import kotlin.collections.ArrayList
 
     private fun randomizeAll() {
         randomizeAnnouncerFiles()
+        randomizeNewsFiles()
         randomizeAdvertFiles()
         randomizeMainDJFiles()
         randomizeSongs()
@@ -247,6 +248,11 @@ import kotlin.collections.ArrayList
     private fun randomizeAnnouncerFiles() {
         announcerFiles.shuffle()
         announcerIterator = announcerFiles.iterator()
+    }
+
+    private fun randomizeNewsFiles() {
+        newsFiles.shuffle()
+        newsIterator = newsFiles.iterator()
     }
 
     private fun randomizeAdvertFiles() {
@@ -338,7 +344,7 @@ import kotlin.collections.ArrayList
 
     private fun getNextNewsFile(): Uri {
         if (!newsIterator!!.hasNext()) {
-            newsIterator = newsFiles.iterator()
+            randomizeNewsFiles()
         }
         return newsIterator!!.next()
     }
@@ -415,7 +421,7 @@ import kotlin.collections.ArrayList
 
     private fun getNextTalkShow(): Song {
         if (!talkShowIterator!!.hasNext()) {
-            talkShowIterator = talkShows.iterator()
+            randomizeTalkShows()
         }
         return talkShowIterator!!.next()
     }
